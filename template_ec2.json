@@ -1,0 +1,46 @@
+[{
+  "name": "${name}",
+  "image": "${image}",
+  "cpu": ${cpu},
+  "memory": ${memory},
+  "command": ${command},
+  "essential": true,
+  "portMappings": [
+    {
+      "hostPort": ${port},
+      "containerPort": ${port},
+      "protocol": "tcp"
+    }
+  ],
+  "environment": [
+    { "name": "ENVIRONMENT", "value": "${environment}" },
+    { "name": "NLB_PUBLIC_ADDRS", "value": "${nlb_public_ips}" },
+    { "name": "NLB_PRIVATE_ADDRS", "value": "${nlb_private_ips}" }
+  ],
+  "logConfiguration": {
+    "logDriver": "awslogs",
+    "options": {
+      "awslogs-create-group": "true",
+      "awslogs-region": "${region}",
+      "awslogs-group": "${family}",
+      "awslogs-stream-prefix": "${prefix}"
+    }
+  },
+  "mountPoints": [
+    {
+        "sourceVolume": "${source_volume_data}",
+        "containerPath": "${container_path_data}",
+        "readOnly": false
+    },
+    {
+      "sourceVolume": "${source_volume_conf}",
+      "containerPath": "${container_path_conf}",
+      "readOnly": false
+    },
+    {
+      "sourceVolume": "${source_volume_logs}",
+      "containerPath": "${container_path_logs}",
+      "readOnly": false
+    }
+  ]
+}]
