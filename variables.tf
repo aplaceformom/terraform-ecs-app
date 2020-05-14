@@ -69,8 +69,8 @@ variable "memory" {
   default = ""
 }
 
-variable "template" {
-  default = ""
+variable "environment" {
+  default = {}
 }
 
 variable "port" {
@@ -97,19 +97,9 @@ variable "tg_protocol" {
   default = ""
 }
 
-variable "container_volume_data" {
-  description = "Path on container for data that gets mapped to an EFS volume. Use only with EC2 launch type"
-  default     = ""
-}
-
-variable "container_volume_conf" {
-  description = "Path on container for configuration that gets mapped to an EFS volume. Use only with EC2 launch type"
-  default     = ""
-}
-
-variable "container_volume_logs" {
-  description = "Path on container for logs that gets mapped to an EFS volume. Use only with EC2 launch type"
-  default     = ""
+variable "mount_points" {
+  description = "Key=Value mappings of mount points"
+  default = {}
 }
 
 variable "health_check_path" {
@@ -290,9 +280,6 @@ locals {
   enable_nlb     = local.lb_protocol == "TCP" && false == var.public && var.enable ? true : false
   enable_ip_nlb  = local.lb_protocol == "TCP" && var.public && var.enable ? true : false
   launch_type    = upper(var.launch_type)
-  template_ec2   = var.template == "" ? file("${path.module}/template_ec2.json") : var.template
-  template_fg    = var.template == "" ? file("${path.module}/template_fargate.json") : var.template
-  template       = local.launch_type == "EC2" ? local.template_ec2 : local.template_fg
 
   default_cpus   = local.launch_type == "FARGATE" ? "256" : "1"
   default_memory = local.launch_type == "FARGATE" ? 512 : "512"

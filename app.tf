@@ -38,27 +38,7 @@ resource "aws_ecs_task_definition" "ec2" {
   memory                   = local.memory
   execution_role_arn       = local.exec_role_arn
   task_role_arn            = var.task_role_arn
-  container_definitions    = templatefile("${path.module}/template_ec2.json", {
-    name                = var.name
-    image               = var.image
-    nlb_public_ips      = local.enable_ip_nlb ? join(" ", aws_eip.ip.*.public_ip) : ""
-    nlb_private_ips     = local.enable_ip_nlb ? join(" ", aws_eip.ip.*.private_ip) : ""
-    command             = jsonencode(var.command)
-    cpu                 = local.cpus
-    memory              = local.memory
-    port                = var.port
-    region              = local.region
-    family              = local.family
-    prefix              = local.prefix
-    environment         = terraform.workspace
-    source_volume_data  = "${var.name}-data"
-    source_volume_conf  = "${var.name}-conf"
-    source_volume_logs  = "${var.name}-logs"
-    container_path_data = var.container_volume_data
-    container_path_conf = var.container_volume_conf
-    container_path_logs = var.container_volume_logs
-  })
-
+  container_definitions    = tostring(jsonencode(local.template))
 
   volume {
     name = "${var.name}-data"
@@ -108,20 +88,7 @@ resource "aws_ecs_task_definition" "fargate" {
   memory                   = local.memory
   execution_role_arn       = local.exec_role_arn
   task_role_arn            = var.task_role_arn
-  container_definitions    = templatefile("${path.module}/template_fargate.json", {
-    name            = var.name
-    image           = var.image
-    nlb_public_ips  = local.enable_ip_nlb ? join(" ", aws_eip.ip.*.public_ip) : ""
-    nlb_private_ips = local.enable_ip_nlb ? join(" ", aws_eip.ip.*.private_ip) : ""
-    command         = jsonencode(var.command)
-    cpu             = local.cpus
-    memory          = local.memory
-    port            = var.port
-    region          = local.region
-    family          = local.family
-    prefix          = local.prefix
-    environment     = terraform.workspace
-  })
+  container_definitions    = tostring(jsonencode(local.template))
 }
 
 resource "aws_service_discovery_service" "app" {
