@@ -19,6 +19,8 @@ resource "aws_security_group" "app" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = local.tags
 }
 
 resource "aws_ecs_task_definition" "ec2" {
@@ -69,6 +71,8 @@ resource "aws_ecs_task_definition" "ec2" {
       driver        = "cloudstor:aws"
     }
   }
+
+  tags = local.tags
 }
 
 resource "aws_ecs_task_definition" "fargate" {
@@ -89,6 +93,8 @@ resource "aws_ecs_task_definition" "fargate" {
   execution_role_arn       = local.exec_role_arn
   task_role_arn            = var.task_role_arn
   container_definitions    = tostring(jsonencode(local.template))
+
+  tags = local.tags
 }
 
 resource "aws_service_discovery_service" "app" {
@@ -153,5 +159,6 @@ resource "aws_ecs_service" "app" {
     registry_arn = aws_service_discovery_service.app.arn
     port         = var.port
   }
-}
 
+  tags = local.tags
+}

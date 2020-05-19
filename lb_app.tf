@@ -9,6 +9,8 @@ resource "aws_security_group" "lb2cluster" {
   name_prefix = local.prefix
   description = "Controls access to the ALB listeners"
   vpc_id      = local.vpc_id
+
+  tags = local.tags
 }
 
 resource "aws_security_group_rule" "allow_service_port" {
@@ -72,6 +74,8 @@ resource "aws_security_group" "cluster2app" {
     to_port     = 0
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = local.tags
 }
 
 resource "aws_lb_target_group" "lb_app" {

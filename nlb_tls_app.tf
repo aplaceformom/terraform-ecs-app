@@ -5,6 +5,7 @@ resource "aws_lb" "nlb_tls" {
   name_prefix        = local.prefix
   load_balancer_type = "network"
   internal           = true
+  tags               = local.tags
   # TF-UPGRADE-TODO: In Terraform v0.10 and earlier, it was sometimes necessary to
   # force an interpolation expression to be interpreted as a list by wrapping it
   # in an extra set of list brackets. That form was supported for compatibility in
@@ -20,6 +21,7 @@ resource "aws_ecs_service" "nlb_tls_app" {
   count   = local.enable_nlb_tls ? 1 : 0
   name    = var.name
   cluster = var.cluster["id"]
+  tags    = local.tags
   task_definition = element(
     concat(
       aws_ecs_task_definition.ec2.*.arn,

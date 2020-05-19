@@ -16,6 +16,11 @@ variable "cronjobs" {
   default     = []
 }
 
+variable "tags" {
+  description = "A map of tags to apply to created resources"
+  default = {}
+}
+
 variable "family" {
   default = ""
 }

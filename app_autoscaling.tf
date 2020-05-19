@@ -65,4 +65,3 @@ resource "aws_appautoscaling_policy" "ip_nlb_app" {
 
   depends_on = [aws_appautoscaling_target.ip_nlb_app]
 }
-

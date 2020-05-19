@@ -12,6 +12,8 @@ resource "aws_lb" "alb" {
   idle_timeout = var.idle_timeout
 
   security_groups = [aws_security_group.lb2cluster[0].id]
+
+  tags = local.tags
 }
 
 resource "aws_ecs_service" "alb_app" {
@@ -63,5 +65,7 @@ resource "aws_ecs_service" "alb_app" {
   }
 
   depends_on = [aws_lb_listener.front_end]
+
+  tags = local.tags
 }
 

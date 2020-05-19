@@ -1,5 +1,7 @@
 /* vim: ts=2:sw=2:sts=0:expandtab */
 locals {
+  tags = merge(var.tags, { environment = terraform.workspace, env = terraform.workspace, name = var.name })
+
   environs = merge(var.environment, { environment = terraform.workspace })
   environ = [
    for key in keys(local.environs): {

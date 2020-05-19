@@ -9,6 +9,7 @@ resource "aws_security_group" "lb2cluster_tls" {
   name_prefix = local.prefix
   description = "Controls access to the ALB listeners"
   vpc_id      = local.vpc_id
+  tags        = local.tags
 }
 
 resource "aws_security_group_rule" "allow_service_port_tls" {
@@ -50,6 +51,7 @@ resource "aws_security_group" "cluster2app_tls" {
   name_prefix = local.prefix
   description = "Controls access to the targets behind the LB"
   vpc_id      = local.vpc_id
+  tags        = local.tags
 
   ingress {
     protocol  = "tcp"

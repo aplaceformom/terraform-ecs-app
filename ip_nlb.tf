@@ -6,6 +6,8 @@ resource "aws_eip" "ip" {
   count = local.enable_ip_nlb ? 3 : 0
 
   vpc = true
+
+  tags = local.tags
 }
 
 resource "aws_lb" "ip_nlb" {
@@ -27,6 +29,8 @@ resource "aws_lb" "ip_nlb" {
     subnet_id     = local.public_subnets[2]
     allocation_id = aws_eip.ip[2].id
   }
+
+  tags = local.tags
 }
 
 resource "aws_ecs_service" "ip_nlb_app" {
@@ -73,5 +77,7 @@ resource "aws_ecs_service" "ip_nlb_app" {
   }
 
   depends_on = [aws_lb_listener.front_end]
+
+  tags = local.tags
 }
 
