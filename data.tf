@@ -8,6 +8,13 @@ locals {
    }
   ]
 
+  secrets = [
+   for key in keys(var.secrets): {
+     name = key
+     value = var.secrets[key]
+   }
+  ]
+
   mount_points = [
    for key in keys(var.mount_points): {
      sourceVolume = key
@@ -30,6 +37,7 @@ locals {
     }]
     mountPoints = local.mount_points
     environment = local.environ
+    secrets = local.secrets
     logConfiguration = {
       logDriver = "awslogs"
         options = {
