@@ -73,6 +73,10 @@ variable "environment" {
   default = {}
 }
 
+variable "secrets" {
+  default = {}
+}
+
 variable "port" {
 }
 
