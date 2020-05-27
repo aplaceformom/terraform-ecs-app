@@ -22,5 +22,5 @@ data "aws_iam_role" "exec_role" {
 resource "aws_iam_role_policy_attachment" "secret" {
   count      = length(keys(var.secrets)) != 0 ? 1 : 0
   role       = data.aws_iam_role.exec_role.name
-  policy_arn = data.aws_iam_policy.secrets[0].arn
+  policy_arn = aws_iam_policy.secrets[0].arn
 }
