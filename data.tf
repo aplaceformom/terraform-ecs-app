@@ -1,4 +1,5 @@
 /* vim: ts=2:sw=2:sts=0:expandtab */
+data "aws_caller_identity" "current" {}
 locals {
   tags = merge(var.tags, { environment = terraform.workspace, env = terraform.workspace, name = var.name })
 
@@ -13,7 +14,7 @@ locals {
   secrets = [
    for key in sort(keys(var.secrets)): {
      name      = key
-     valueFrom = substr(var.secrets[key], 0, 8) == "arn:aws:" ? var.secrets[key] : "arn:aws:ssm::${var.account_id}:parameter/${replace(var.secrets[key], "/^[/]/", "")}"
+     valueFrom = substr(var.secrets[key], 0, 8) == "arn:aws:" ? var.secrets[key] : "arn:aws:ssm::${data.aws_caller_identity.current.account_id}:parameter/${replace(var.secrets[key], "/^[/]/", "")}"
    }
   ]
 
