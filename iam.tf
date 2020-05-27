@@ -16,7 +16,7 @@ data "aws_iam_policy_document" "secrets" {
 }
 
 data "aws_iam_role" "exec_role" {
-  arn = local.exec_role_arn
+  name = replace(local.exec_role_arn, "/.*role[/]/", "")
 }
 
 resource "aws_iam_role_policy_attachment" "secret" {
