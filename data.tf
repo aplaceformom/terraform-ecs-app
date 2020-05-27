@@ -13,7 +13,7 @@ locals {
   secrets = [
    for key in keys(var.secrets): {
      name = key
-     valueFrom = var.secrets[key]
+     valueFrom = substr(var.secrets[key], 0, 8) == "arn:aws:" ? var.secrets[key] : "arn:aws:ssm::${var.account_id}:parameter/${replace(var.secrets[key], "/^[/]/", "")}"
    }
   ]
 
