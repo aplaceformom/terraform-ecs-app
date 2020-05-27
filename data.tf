@@ -4,15 +4,15 @@ locals {
 
   environs = merge(var.environment, { environment = terraform.workspace })
   environ = [
-   for key in keys(local.environs): {
-     name = key
+   for key in sort(keys(local.environs)): {
+     name  = key
      value = local.environs[key]
    }
   ]
 
   secrets = [
-   for key in keys(var.secrets): {
-     name = key
+   for key in sort(keys(var.secrets)): {
+     name      = key
      valueFrom = substr(var.secrets[key], 0, 8) == "arn:aws:" ? var.secrets[key] : "arn:aws:ssm::${var.account_id}:parameter/${replace(var.secrets[key], "/^[/]/", "")}"
    }
   ]
