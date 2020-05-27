@@ -13,7 +13,7 @@ locals {
   secrets = [
    for key in keys(var.secrets): {
      name = key
-     value = var.secrets[key]
+     valueFrom = var.secrets[key]
    }
   ]
 
