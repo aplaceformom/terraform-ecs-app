@@ -25,7 +25,7 @@ resource "aws_security_group" "app" {
 
 resource "aws_ecs_task_definition" "ec2" {
   count        = var.enable && local.launch_type == "EC2" ? 1 : 0
-  family       = local.family
+  family       = var.name
   network_mode = "awsvpc"
   # TF-UPGRADE-TODO: In Terraform v0.10 and earlier, it was sometimes necessary to
   # force an interpolation expression to be interpreted as a list by wrapping it
