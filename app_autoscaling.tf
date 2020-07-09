@@ -4,7 +4,7 @@ resource "aws_appautoscaling_target" "alb_app" {
   min_capacity = var.autoscaling_min_count
 
   # Resource_id syntax - "service/<ecs cluster name>/<ecs service name>"
-  resource_id        = "service/${var.cluster["id"]}/${aws_ecs_service.alb_app[0].name}"
+  resource_id        = "service/${var.cluster["name"]}/${aws_ecs_service.alb_app[0].name}"
   role_arn           = var.task_role_arn
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
