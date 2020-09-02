@@ -54,17 +54,9 @@ resource "aws_security_group" "cluster2app" {
   vpc_id      = local.vpc_id
 
   ingress {
-    protocol  = "tcp"
-    from_port = var.port
-    to_port   = var.port
-    # TF-UPGRADE-TODO: In Terraform v0.10 and earlier, it was sometimes necessary to
-    # force an interpolation expression to be interpreted as a list by wrapping it
-    # in an extra set of list brackets. That form was supported for compatibility in
-    # v0.11, but is no longer supported in Terraform v0.12.
-    #
-    # If the expression in the following list itself returns a list, remove the
-    # brackets to avoid interpretation as a list of lists. If the expression
-    # returns a single list item then leave it as-is and remove this TODO comment.
+    protocol        = "tcp"
+    from_port       = var.port
+    to_port         = var.port
     security_groups = concat(local.security_groups, aws_security_group.lb2cluster.*.id)
   }
 
@@ -107,10 +99,7 @@ resource "aws_lb_listener" "front_end" {
   # load balancer isn't defined (count = 0) then it wont be expanded.  In the
   # end only 1 load balancer should be defined, we are just trying to find the
   # right one by transforming it into a list and picking element 0.
-  load_balancer_arn = element(
-    concat(aws_lb.alb.*.id, aws_lb.nlb.*.id, aws_lb.ip_nlb.*.id),
-    0,
-  )
+  load_balancer_arn = element(concat(aws_lb.alb.*.id, aws_lb.nlb.*.id, aws_lb.ip_nlb.*.id), 0)
 
   port            = local.lb_port
   protocol        = local.lb_protocol
@@ -127,10 +116,7 @@ resource "aws_lb_listener" "front_end" {
 resource "aws_lb_listener" "http" {
   count = local.enable_lb && local.lb_protocol == "HTTPS" ? 1 : 0
 
-  load_balancer_arn = element(
-    concat(aws_lb.alb.*.id, aws_lb.nlb.*.id, aws_lb.ip_nlb.*.id),
-    0,
-  )
+  load_balancer_arn = element(concat(aws_lb.alb.*.id, aws_lb.nlb.*.id, aws_lb.ip_nlb.*.id), 0)
 
   port     = "80"
   protocol = "HTTP"

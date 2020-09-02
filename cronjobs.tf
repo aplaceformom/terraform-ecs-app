@@ -16,28 +16,11 @@ resource "aws_cloudwatch_event_target" "cronjobs" {
   role_arn  = element(aws_iam_role.cronjobs.*.arn, count.index)
 
   ecs_target {
-    task_count = 1
-    task_definition_arn = element(
-      concat(
-        aws_ecs_service.alb_app.*.task_definition,
-        aws_ecs_service.app.*.task_definition,
-        aws_ecs_service.ip_nlb_app.*.task_definition,
-        aws_ecs_service.nlb_app.*.task_definition,
-        [""],
-      ),
-      0,
-    )
+    task_count          = 1
+    task_definition_arn = element(concat(aws_ecs_service.alb_app.*.task_definition, aws_ecs_service.app.*.task_definition, aws_ecs_service.ip_nlb_app.*.task_definition, aws_ecs_service.nlb_app.*.task_definition, [""]), 0)
 
     launch_type = var.launch_type
     network_configuration {
-      # TF-UPGRADE-TODO: In Terraform v0.10 and earlier, it was sometimes necessary to
-      # force an interpolation expression to be interpreted as a list by wrapping it
-      # in an extra set of list brackets. That form was supported for compatibility in
-      # v0.11, but is no longer supported in Terraform v0.12.
-      #
-      # If the expression in the following list itself returns a list, remove the
-      # brackets to avoid interpretation as a list of lists. If the expression
-      # returns a single list item then leave it as-is and remove this TODO comment.
       subnets = local.private_subnets
     }
   }
