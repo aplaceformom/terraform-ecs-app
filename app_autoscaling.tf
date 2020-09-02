@@ -62,7 +62,7 @@ resource "aws_appautoscaling_target" "ip_nlb_app" {
   min_capacity = var.autoscaling_min_count
 
   # Resource_id syntax - "service/<ecs cluster name>/<ecs service name>"
-  resource_id        = "service/${var.cluster["name"]}/${aws_ecs_service.ip_nlb_app[0].name}"
+  resource_id        = "service/${var.cluster["name"]}/${aws_ecs_service.ip_nlb_app.name}"
   role_arn           = var.task_role_arn
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
@@ -72,7 +72,6 @@ resource "aws_appautoscaling_policy" "ip_nlb_app_cpu" {
   count       = local.enable_ip_nlb && var.enable_autoscaling ? 1 : 0
   name        = "${var.name}-cpu-policy"
   policy_type = "TargetTrackingScaling"
-
 
   # Resource_id syntax - "service/<ecs cluster name>/<ecs service name>"
   resource_id        = "service/${var.cluster["name"]}/${aws_ecs_service.ip_nlb_app[0].name}"
@@ -96,7 +95,7 @@ resource "aws_appautoscaling_policy" "ip_nlb_app_mem" {
   policy_type = "TargetTrackingScaling"
 
   # Resource_id syntax - "service/<ecs cluster name>/<ecs service name>"
-  resource_id        = "service/${var.cluster["name"]}/${aws_ecs_service.ip_nlb_app[0].name}"
+  resource_id        = "service/${var.cluster["name"]}/${aws_ecs_service.ip_nlb_app.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 

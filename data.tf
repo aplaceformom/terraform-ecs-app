@@ -1,5 +1,6 @@
 /* vim: ts=2:sw=2:sts=0:expandtab */
 data "aws_region" "current" {}
+
 data "aws_caller_identity" "current" {}
 locals {
   tags = merge(var.tags, { environment = terraform.workspace, env = terraform.workspace, name = var.name })
@@ -18,14 +19,6 @@ locals {
     for key in sort(keys(var.secrets)) : {
       name      = key
       valueFrom = substr(var.secrets[key], 0, 8) == "arn:aws:" ? var.secrets[key] : substr(var.secrets[key], 0, 4) == "key/" ? "arn:aws:kms:${local.region}:${data.aws_caller_identity.current.account_id}:${var.secrets[key]}" : substr(var.secrets[key], 0, 1) == "/" ? "arn:aws:ssm:${local.region}:${data.aws_caller_identity.current.account_id}:parameter/${replace(var.secrets[key], "/^[/]/", "")}" : "arn:aws:secretsmanager:${local.region}:${data.aws_caller_identity.current.account_id}:secret:${var.secrets[key]}"
-    }
-  ]
-
-  mount_points = [
-    for key in keys(var.mount_points) : {
-      sourceVolume  = key
-      containerPath = var.mount_points[key]
-      readOnly      = false
     }
   ]
 

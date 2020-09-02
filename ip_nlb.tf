@@ -1,19 +1,21 @@
 /* vim: ts=2:sw=2:sts=0:expandtab */
+locals {
+  enable_ip_nlb = "${local.lb_protocol == "TCP" && var.public && var.enable ? true : false}"
+}
 
 resource "aws_eip" "ip" {
   # Note: we can not reference a resource generated list (var.public_subnets)
   # as part of this code as it can not be down on the first pass.
   count = local.enable_ip_nlb ? 3 : 0
-
-  vpc = true
-
-  tags = local.tags
+  vpc   = true
+  tags  = local.tags
 }
 
 resource "aws_lb" "ip_nlb" {
   count              = local.enable_ip_nlb ? 1 : 0
   name_prefix        = local.prefix
   load_balancer_type = "network"
+  tags               = local.tags
 
   subnet_mapping {
     subnet_id     = local.public_subnets[0]
@@ -29,8 +31,6 @@ resource "aws_lb" "ip_nlb" {
     subnet_id     = local.public_subnets[2]
     allocation_id = aws_eip.ip[2].id
   }
-
-  tags = local.tags
 }
 
 resource "aws_ecs_service" "ip_nlb_app" {
@@ -43,6 +43,10 @@ resource "aws_ecs_service" "ip_nlb_app" {
 
   health_check_grace_period_seconds = var.health_check_grace_period
 
+  deployment_controller {
+    type = "ECS"
+  }
+
   network_configuration {
     subnets         = local.private_subnets
     security_groups = concat(local.security_groups, [aws_security_group.lb2cluster[0].id])
@@ -54,8 +58,12 @@ resource "aws_ecs_service" "ip_nlb_app" {
     container_port   = var.port
   }
 
+  tags           = local.tags
+  propagate_tags = "SERVICE"
+
   depends_on = [aws_lb_listener.front_end]
 
-  tags = local.tags
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
 }
-

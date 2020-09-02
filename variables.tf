@@ -7,18 +7,23 @@ variable "enable" {
 variable "name" {
 }
 
+variable "environment" {
+  description = "Deployment environment (optional)"
+  default     = ""
+}
+
 variable "cluster" {
   type = map(string)
+}
+
+variable "tags" {
+  type    = map
+  default = {}
 }
 
 variable "cronjobs" {
   description = "A list of maps for scheduled cronjobs. Each map in the list must specify a name, command, and schedule."
   default     = []
-}
-
-variable "tags" {
-  description = "A map of tags to apply to created resources"
-  default     = {}
 }
 
 variable "family" {
@@ -38,9 +43,14 @@ variable "exec_role_arn" {
   default     = ""
 }
 
+variable "create_before_destroy" {
+  description = "Set the lifecycle policy of the ECS App"
+  default     = ""
+}
+
 variable "region" {
   description = "Deployment region (deprecated)"
-  default = "unused"
+  default     = "unused"
 }
 
 variable "public" {
@@ -75,12 +85,8 @@ variable "memory" {
   default = ""
 }
 
-variable "environment" {
-  default = {}
-}
-
-variable "secrets" {
-  default = {}
+variable "template" {
+  default = ""
 }
 
 variable "port" {
@@ -107,9 +113,19 @@ variable "tg_protocol" {
   default = ""
 }
 
-variable "mount_points" {
-  description = "Key=Value mappings of mount points"
-  default     = {}
+variable "container_volume_data" {
+  description = "Path on container for data that gets mapped to an EFS volume. Use only with EC2 launch type"
+  default     = ""
+}
+
+variable "container_volume_conf" {
+  description = "Path on container for configuration that gets mapped to an EFS volume. Use only with EC2 launch type"
+  default     = ""
+}
+
+variable "container_volume_logs" {
+  description = "Path on container for logs that gets mapped to an EFS volume. Use only with EC2 launch type"
+  default     = ""
 }
 
 variable "health_check_path" {
@@ -165,12 +181,18 @@ variable "desired_count" {
   default = 1
 }
 
+/**
+* FIXME: we should find a way to support autoscaling on any combination of:
+*   - ECSServiceAverageCPUUtilization
+*   - ECSServiceAverageMemoryUtilization
+*   - ALBRequestCountPerTarget
+*/
 variable "autoscaling_target_tracking_metric" {
   default = "ECSServiceAverageCPUUtilization (deprecated)"
 }
 
 variable "autoscaling_target_tracking_value" {
-  default = 50
+  default = 65
 }
 
 variable "autoscaling_target_cpu" {
@@ -184,7 +206,7 @@ variable "autoscaling_target_mem" {
 }
 
 variable "autoscaling_min_count" {
-  default = 3
+  default = 2
 }
 
 variable "autoscaling_max_count" {
@@ -192,24 +214,94 @@ variable "autoscaling_max_count" {
 }
 
 variable "autoscaling_scale_in_cooldown" {
-  default = 300
+  default = 900
 }
 
 variable "autoscaling_scale_out_cooldown" {
-  default = 300
+  default = 60
 }
 
 variable "enable_autoscaling" {
   default = false
 }
 
+variable "enable_alarms" {
+  description = "Enable CloudWatch Alarms"
+  default     = true
+}
+
+variable "enable_notifications" {
+  description = "Enable CloudWatch Notifications"
+  default     = false
+}
+
+variable "alarm_cpu_min_percent" {
+  description = "CPU under utilization alarm"
+  default     = 10
+}
+
+variable "alarm_cpu_min_period" {
+  description = "CPU under utilization metric period"
+  default     = 900
+}
+
+variable "alarm_cpu_max_percent" {
+  description = "CPU over utilization percent"
+  default     = 90
+}
+
+variable "alarm_cpu_max_period" {
+  description = "CPU over utilization metric period"
+  default     = 900
+}
+
+variable "alarm_mem_min_percent" {
+  description = "CPU under utilization percent"
+  default     = 10
+}
+
+variable "alarm_mem_min_period" {
+  description = "Memory under utilization metric period"
+  default     = 900
+}
+
+variable "alarm_mem_max_percent" {
+  description = "CPU over utilization percent"
+  default     = 90
+}
+
+variable "alarm_mem_max_period" {
+  description = "Memory over utilization metric period"
+  default     = 900
+}
+
+variable "alarm_unhealthy_task_count" {
+  description = "Alarm when some number of tasks are unhealthy"
+  default     = 1
+}
+
+variable "alarm_unhealthy_task_period" {
+  description = "Unhealthy task metric period"
+  default     = 300
+}
+
+variable "alarm_5xx_error_percent" {
+  description = "5xx error percentile alarm"
+  default     = 1
+}
+
+variable "alarm_5xx_error_period" {
+  description = "5xx error metric period"
+  default     = 300
+}
+
 variable "enable_cloudwatch_default_alarms" {
-  description = "Enables all the alarm resouces in cloudwatch.tf"
+  description = "Enables all the alarm resouces in cloudwatch.tf (deprecated)"
   default     = false
 }
 
 variable "cloudwatch_settings" {
-  description = "Map of default settings for cloudwatch alarms configuration. If you want to specify custom values, copy this map and pass it to the module with your custom settings."
+  description = "Map of default settings for cloudwatch alarms configuration. If you want to specify custom values, copy this map and pass it to the module with your custom settings. (deprecated)"
   type        = map(string)
 
   default = {
@@ -266,30 +358,20 @@ variable "elkendpoint" {
 }
 
 locals {
-  vpc_id = var.vpc_id == "" ? var.cluster["vpc_id"] : var.vpc_id
-  family = var.family == "" ? var.name : var.family
-  prefix = var.prefix == "" ? local.family : var.prefix
+  vpc_id = "${var.vpc_id == "" ? var.cluster["vpc_id"] : var.vpc_id}"
+  family = "${var.family == "" ? var.name : var.family}"
+  prefix = "${var.prefix == "" ? local.family : var.prefix}"
 
-  public_subnets  = split(",", length(var.public_subnets) == 0 ? var.cluster["public_subnets"] : join(",", var.public_subnets))
-  private_subnets = split(",", length(var.private_subnets) == 0 ? var.cluster["private_subnets"] : join(",", var.private_subnets))
+  public_subnets  = "${split(",", length(var.public_subnets) == 0 ? var.cluster["public_subnets"] : join(",", var.public_subnets))}"
+  private_subnets = "${split(",", length(var.private_subnets) == 0 ? var.cluster["private_subnets"] : join(",", var.private_subnets))}"
 
-  security_groups = concat(split(",", var.cluster["security_groups"]), var.security_group_ids)
+  security_groups = "${concat(split(",", var.cluster["security_groups"]), var.security_group_ids)}"
 
-  port        = var.port == "" ? var.lb_port : var.port
-  lb_port     = var.lb_port == "" ? var.port : var.lb_port
-  lb_protocol = upper(var.lb_protocol)
-  tg_protocol = var.tg_protocol == "" ? local.lb_protocol : upper(var.tg_protocol)
-  enable_app  = local.lb_protocol == "" && var.enable ? true : false
-
-  #do not use lb_app if the protocol is TLS, as the healthchecks won't work
-  enable_lb  = local.lb_protocol != "" && local.lb_protocol != "TLS" && var.enable ? true : false
-  enable_alb = local.lb_protocol != "TCP" && local.enable_lb ? true : false
-
-  #will use enable_nlb_tls variable to deal with the TLS protocol
-  enable_nlb_tls = local.lb_protocol == "TLS" && false == var.public && var.enable ? true : false
-  enable_nlb     = local.lb_protocol == "TCP" && false == var.public && var.enable ? true : false
-  enable_ip_nlb  = local.lb_protocol == "TCP" && var.public && var.enable ? true : false
-  launch_type    = upper(var.launch_type)
+  port         = var.port == "" ? var.lb_port : var.port
+  lb_port      = var.lb_port == "" ? var.port : var.lb_port
+  lb_protocol  = upper(var.lb_protocol)
+  tg_protocol  = var.tg_protocol == "" ? local.lb_protocol : upper(var.tg_protocol)
+  launch_type  = upper(var.launch_type)
 
   default_cpus   = local.launch_type == "FARGATE" ? "256" : "1"
   default_memory = local.launch_type == "FARGATE" ? 512 : "512"
@@ -299,4 +381,3 @@ locals {
   exec_role_arn = var.exec_role_arn == "" ? var.cluster["execution_role_arn"] : var.exec_role_arn
   elkendpoint   = var.elkendpoint == "" ? var.cluster["elk_endpoint"] : var.elkendpoint
 }
-
