@@ -24,17 +24,9 @@ resource "aws_security_group" "app" {
 }
 
 resource "aws_ecs_task_definition" "ec2" {
-  count        = var.enable && local.launch_type == "EC2" ? 1 : 0
-  family       = var.name
-  network_mode = "awsvpc"
-  # TF-UPGRADE-TODO: In Terraform v0.10 and earlier, it was sometimes necessary to
-  # force an interpolation expression to be interpreted as a list by wrapping it
-  # in an extra set of list brackets. That form was supported for compatibility in
-  # v0.11, but is no longer supported in Terraform v0.12.
-  #
-  # If the expression in the following list itself returns a list, remove the
-  # brackets to avoid interpretation as a list of lists. If the expression
-  # returns a single list item then leave it as-is and remove this TODO comment.
+  count                    = var.enable && local.launch_type == "EC2" ? 1 : 0
+  family                   = var.name
+  network_mode             = "awsvpc"
   requires_compatibilities = [local.launch_type]
   cpu                      = local.cpus
   memory                   = local.memory
@@ -76,17 +68,9 @@ resource "aws_ecs_task_definition" "ec2" {
 }
 
 resource "aws_ecs_task_definition" "fargate" {
-  count        = var.enable && local.launch_type == "FARGATE" ? 1 : 0
-  family       = local.family
-  network_mode = "awsvpc"
-  # TF-UPGRADE-TODO: In Terraform v0.10 and earlier, it was sometimes necessary to
-  # force an interpolation expression to be interpreted as a list by wrapping it
-  # in an extra set of list brackets. That form was supported for compatibility in
-  # v0.11, but is no longer supported in Terraform v0.12.
-  #
-  # If the expression in the following list itself returns a list, remove the
-  # brackets to avoid interpretation as a list of lists. If the expression
-  # returns a single list item then leave it as-is and remove this TODO comment.
+  count                    = var.enable && local.launch_type == "FARGATE" ? 1 : 0
+  family                   = local.family
+  network_mode             = "awsvpc"
   requires_compatibilities = [local.launch_type]
   cpu                      = local.cpus
   memory                   = local.memory
@@ -121,37 +105,19 @@ resource "aws_service_discovery_service" "app" {
 }
 
 resource "aws_ecs_service" "app" {
-  count   = local.enable_app ? 1 : 0
-  name    = var.name
-  cluster = var.cluster["id"]
-  task_definition = element(
-    concat(
-      aws_ecs_task_definition.ec2.*.arn,
-      aws_ecs_task_definition.fargate.*.arn,
-    ),
-    0,
-  )
-  desired_count = var.desired_count
-  launch_type   = local.launch_type
+  count           = local.enable_app ? 1 : 0
+  name            = var.name
+  cluster         = var.cluster["id"]
+  task_definition = element(concat(aws_ecs_task_definition.ec2.*.arn, aws_ecs_task_definition.fargate.*.arn), 0)
+  desired_count   = var.desired_count
+  launch_type     = local.launch_type
 
   network_configuration {
-    # TF-UPGRADE-TODO: In Terraform v0.10 and earlier, it was sometimes necessary to
-    # force an interpolation expression to be interpreted as a list by wrapping it
-    # in an extra set of list brackets. That form was supported for compatibility in
-    # v0.11, but is no longer supported in Terraform v0.12.
-    #
-    # If the expression in the following list itself returns a list, remove the
-    # brackets to avoid interpretation as a list of lists. If the expression
-    # returns a single list item then leave it as-is and remove this TODO comment.
     security_groups = concat(local.security_groups, [aws_security_group.app[0].id])
 
     # List transformations to get around Terraform prohibiting:
     #   "${var.condition ? var.list1 : var.list2}"
-    subnets = split(
-      ",",
-      var.public ? join(",", local.public_subnets) : join(",", local.private_subnets),
-    )
-
+    subnets          = split(",", var.public ? join(",", local.public_subnets) : join(",", local.private_subnets))
     assign_public_ip = var.public
   }
 
