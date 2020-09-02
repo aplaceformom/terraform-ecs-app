@@ -73,7 +73,6 @@ resource "aws_appautoscaling_policy" "ip_nlb_app_cpu" {
   name        = "${var.name}-cpu-policy"
   policy_type = "TargetTrackingScaling"
 
-
   # Resource_id syntax - "service/<ecs cluster name>/<ecs service name>"
   resource_id        = "service/${var.cluster["name"]}/${aws_ecs_service.ip_nlb_app[0].name}"
   scalable_dimension = "ecs:service:DesiredCount"

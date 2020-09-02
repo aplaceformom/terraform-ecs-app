@@ -1,99 +1,199 @@
-resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
-  count               = var.enable_cloudwatch_default_alarms ? 1 : 0
-  alarm_name          = "${var.name}_unhealthy_hosts"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = var.cloudwatch_settings["unhealthy_hosts_eval_periods"]
+locals {
+  alarm_lb = element(concat(aws_lb.alb.*.arn_suffix, aws_lb.nlb.*.arn_suffix, aws_lb.ip_nlb.*.arn_suffix, [""]), 0)
+  alarm_tg = element(concat(aws_lb_target_group.lb_app.*.arn_suffix, [""]), 0)
+}
+
+resource "aws_sns_topic" "alarms" {
+  count = var.enable_alarms && var.enable ? 1 : 0
+  name  = "${var.name}_alarms"
+}
+
+resource "aws_sns_topic" "info" {
+  count = var.enable_notifications && var.enable ? 1 : 0
+  name  = "${var.name}_info"
+}
+
+resource "aws_cloudwatch_metric_alarm" "deployment" {
+  count              = var.enable_notifications && var.enable ? 1 : 0
+  alarm_name         = "${var.name}_deployment"
+  alarm_description  = "Deployment in ${terraform.workspace}"
+  alarm_actions      = [aws_sns_topic.info[0].arn]
+  ok_actions         = [aws_sns_topic.info[0].arn]
+  evaluation_periods = 2
+
+  namespace           = "ECS/ContainerInsights"
+  metric_name         = "DeploymentCount"
+  comparison_operator = "GreaterThanThreshold"
+  statistic           = "Average"
+  threshold           = 1
+  period              = 60
+
+  dimensions = {
+    ClusterName = var.cluster["name"]
+    ServiceName = var.name
+  }
+
+  tags = local.tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "pending" {
+  count              = var.enable_alarms && var.enable ? 1 : 0
+  alarm_name         = "${var.name}_pending"
+  alarm_description  = "Pending deployment in ${terraform.workspace}"
+  alarm_actions      = [aws_sns_topic.alarms[0].arn]
+  ok_actions         = [aws_sns_topic.alarms[0].arn]
+  evaluation_periods = 2
+  treat_missing_data = "notBreaching"
+
+  namespace           = "ECS/ContainerInsights"
+  metric_name         = "DeploymentCount"
+  comparison_operator = "GreaterThanThreshold"
+  statistic           = "Average"
+  threshold           = 1
+  period              = 900
+
+  dimensions = {
+    ClusterName = "${var.cluster["name"]}"
+    ServiceName = "${var.name}"
+  }
+
+  tags = local.tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "unhealthy_tasks" {
+  count              = var.enable_alarms && local.enable_lb && var.enable ? 1 : 0
+  alarm_name         = "${var.name}_unhealthy_tasks"
+  alarm_description  = "ECS task health in ${terraform.workspace}"
+  alarm_actions      = [aws_sns_topic.alarms[0].arn]
+  ok_actions         = [aws_sns_topic.alarms[0].arn]
+  evaluation_periods = 2
+  treat_missing_data = "notBreaching"
+
+  namespace           = local.enable_nlb ? "AWS/NetworkELB" : local.enable_lb ? "AWS/ApplicationELB" : ""
   metric_name         = "UnHealthyHostCount"
+  comparison_operator = "GreaterThanThreshold"
+  statistic           = "Average"
+  threshold           = var.alarm_unhealthy_task_count
+  period              = var.alarm_unhealthy_task_period
+
+  dimensions = {
+    LoadBalancer = local.alarm_lb
+  }
+
+  tags = local.tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "errors_5xx" {
+  count              = var.enable_alarms && local.enable_alb && var.enable ? 1 : 0
+  alarm_name         = "${var.name}_5xx_errors"
+  alarm_description  = "5xx error rate in ${terraform.workspace}"
+  alarm_actions      = [aws_sns_topic.alarms[0].arn]
+  ok_actions         = [aws_sns_topic.alarms[0].arn]
+  evaluation_periods = 2
+  treat_missing_data = "notBreaching"
+
   namespace           = "AWS/ApplicationELB"
-  period              = var.cloudwatch_settings["unhealthy_hosts_period"]
-  statistic           = var.cloudwatch_settings["unhealthy_hosts_statistic"]
-  threshold           = var.cloudwatch_settings["unhealthy_hosts_threshold"]
-  datapoints_to_alarm = var.cloudwatch_settings["unhealthy_hosts_datapoints"]
-  alarm_description   = "Alarms if unhealthy hosts in the target group exceed threshold"
-  alarm_actions       = [var.cloudwatch_alarm_sns_topic]
+  metric_name         = "HTTPCode_ELB_5XX_Count"
+  comparison_operator = "GreaterThanThreshold"
+  extended_statistic  = "p100"
+  threshold           = var.alarm_5xx_error_percent
+  period              = var.alarm_5xx_error_period
+
   dimensions = {
-    LoadBalancer = element(
-      concat(
-        aws_lb.alb.*.arn_suffix,
-        aws_lb.nlb.*.arn_suffix,
-        aws_lb.nlb_tls.*.arn_suffix,
-        aws_lb.ip_nlb.*.arn_suffix,
-        [""],
-      ),
-      0,
-    )
-    TargetGroup = element(
-      concat(
-        aws_lb_target_group.lb_app.*.arn_suffix,
-        aws_lb_target_group.lb_app_tls.*.arn_suffix,
-        [""],
-      ),
-      0,
-    )
+    LoadBalancer = local.alarm_lb
   }
+
+  tags = local.tags
 }
 
-resource "aws_cloudwatch_metric_alarm" "cpu" {
-  count               = var.enable_cloudwatch_default_alarms ? 1 : 0
-  alarm_name          = "${var.name}_cpu"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = var.cloudwatch_settings["cpu_eval_periods"]
+resource "aws_cloudwatch_metric_alarm" "cpu_max" {
+  count              = var.enable_alarms && var.enable ? 1 : 0
+  alarm_name         = "${var.name}_cpu_max"
+  alarm_description  = "Max CPU usage in ${terraform.workspace}"
+  alarm_actions      = [aws_sns_topic.alarms[0].arn]
+  ok_actions         = [aws_sns_topic.alarms[0].arn]
+  evaluation_periods = 2
+
+  namespace           = "AWS/ECS"
   metric_name         = "CPUUtilization"
-  namespace           = "AWS/ECS"
-  period              = var.cloudwatch_settings["cpu_period"]
-  statistic           = var.cloudwatch_settings["cpu_statistic"]
-  threshold           = var.cloudwatch_settings["cpu_threshold"]
-  datapoints_to_alarm = var.cloudwatch_settings["cpu_datapoints"]
-  alarm_description   = "Alarms if ECS service CPU utilization exceed threshold"
-  alarm_actions       = [var.cloudwatch_alarm_sns_topic]
+  comparison_operator = "GreaterThanThreshold"
+  statistic           = "Average"
+  threshold           = var.alarm_cpu_max_percent
+  period              = var.alarm_cpu_max_period
+
   dimensions = {
     ClusterName = var.cluster["name"]
-    ServiceName = element(
-      concat(
-        aws_ecs_service.alb_app.*.name,
-        aws_ecs_service.app.*.name,
-        aws_ecs_service.ip_nlb_app.*.name,
-        aws_ecs_service.nlb_tls_app.*.name,
-        aws_ecs_service.nlb_app.*.name,
-        [""],
-      ),
-      0,
-    )
+    ServiceName = var.name
   }
+
+  tags = local.tags
 }
 
-resource "aws_cloudwatch_metric_alarm" "memory" {
-  count               = var.enable_cloudwatch_default_alarms ? 1 : 0
-  alarm_name          = "${var.name}_memory"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = var.cloudwatch_settings["memory_eval_periods"]
+resource "aws_cloudwatch_metric_alarm" "cpu_min" {
+  count              = var.enable_notifications && var.enable ? 1 : 0
+  alarm_name         = "${var.name}_cpu_min"
+  alarm_description  = "Min CPU usage in ${terraform.workspace}"
+  alarm_actions      = [aws_sns_topic.info[0].arn]
+  ok_actions         = [aws_sns_topic.info[0].arn]
+  evaluation_periods = 2
+
+  namespace           = "AWS/ECS"
+  metric_name         = "CPUUtilization"
+  comparison_operator = "LessThanThreshold"
+  statistic           = "Average"
+  threshold           = var.alarm_cpu_min_percent
+  period              = var.alarm_cpu_min_period
+
+  dimensions = {
+    ClusterName = var.cluster["name"]
+    ServiceName = var.name
+  }
+
+  tags = local.tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "mem_max" {
+  count              = var.enable_alarms && var.enable ? 1 : 0
+  alarm_name         = "${var.name}_mem_max"
+  alarm_description  = "Max memory usage in ${terraform.workspace}"
+  alarm_actions      = [aws_sns_topic.alarms[0].arn]
+  ok_actions         = [aws_sns_topic.alarms[0].arn]
+  evaluation_periods = 2
+
+  namespace           = "AWS/ECS"
   metric_name         = "MemoryUtilization"
-  namespace           = "AWS/ECS"
-  period              = var.cloudwatch_settings["memory_period"]
-  statistic           = var.cloudwatch_settings["memory_statistic"]
-  threshold           = var.cloudwatch_settings["memory_threshold"]
-  datapoints_to_alarm = var.cloudwatch_settings["memory_datapoints"]
-  alarm_description   = "Alarms if ECS service memory utilization exceed threshold"
-  alarm_actions       = [var.cloudwatch_alarm_sns_topic]
+  comparison_operator = "GreaterThanThreshold"
+  statistic           = "Average"
+  threshold           = var.alarm_mem_max_percent
+  period              = var.alarm_mem_max_period
+
   dimensions = {
     ClusterName = var.cluster["name"]
-    ServiceName = element(
-      concat(
-        aws_ecs_service.alb_app.*.name,
-        aws_ecs_service.app.*.name,
-        aws_ecs_service.ip_nlb_app.*.name,
-        aws_ecs_service.nlb_tls_app.*.name,
-        aws_ecs_service.nlb_app.*.name,
-        [""],
-      ),
-      0,
-    )
+    ServiceName = var.name
   }
+
+  tags = local.tags
 }
 
-# Create log group for lambda subscription
-resource "aws_cloudwatch_log_group" "ecs_log_group" {
-  name              = var.name
-  retention_in_days = 14
-}
+resource "aws_cloudwatch_metric_alarm" "mem_min" {
+  count              = var.enable_notifications && var.enable ? 1 : 0
+  alarm_name         = "${var.name}_mem_min"
+  alarm_description  = "Min memory usage in ${terraform.workspace}"
+  alarm_actions      = [aws_sns_topic.info[0].arn]
+  ok_actions         = [aws_sns_topic.info[0].arn]
+  evaluation_periods = 2
 
+  namespace           = "AWS/ECS"
+  metric_name         = "MemoryUtilization"
+  comparison_operator = "LessThanThreshold"
+  statistic           = "Average"
+  threshold           = var.alarm_mem_min_percent
+  period              = var.alarm_mem_min_period
+
+  dimensions = {
+    ClusterName = var.cluster["name"]
+    ServiceName = var.name
+  }
+
+  tags = local.tags
+}

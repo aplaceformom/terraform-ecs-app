@@ -1,10 +1,15 @@
 /* vim: ts=2:sw=2:sts=0:expandtab */
+locals {
+  enable_app = "${local.lb_protocol == "" && var.enable ? true : false}"
+}
+
 # This is the group you need to edit if you want to restrict access to your application
 resource "aws_security_group" "app" {
   count       = local.enable_app ? 1 : 0
   name_prefix = local.prefix
   description = "controls access to app"
   vpc_id      = local.vpc_id
+  tags        = local.tags
 
   ingress {
     protocol    = "tcp"
@@ -19,13 +24,11 @@ resource "aws_security_group" "app" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
-  tags = local.tags
 }
 
 resource "aws_ecs_task_definition" "ec2" {
   count                    = var.enable && local.launch_type == "EC2" ? 1 : 0
-  family                   = var.name
+  family                   = local.family
   network_mode             = "awsvpc"
   requires_compatibilities = [local.launch_type]
   cpu                      = local.cpus
@@ -63,8 +66,6 @@ resource "aws_ecs_task_definition" "ec2" {
       driver        = "cloudstor:aws"
     }
   }
-
-  tags = local.tags
 }
 
 resource "aws_ecs_task_definition" "fargate" {
@@ -77,8 +78,6 @@ resource "aws_ecs_task_definition" "fargate" {
   execution_role_arn       = local.exec_role_arn
   task_role_arn            = var.task_role_arn
   container_definitions    = tostring(jsonencode(local.template))
-
-  tags = local.tags
 }
 
 resource "aws_service_discovery_service" "app" {
@@ -86,10 +85,12 @@ resource "aws_service_discovery_service" "app" {
 
   dns_config {
     namespace_id = var.cluster["service_namespace_id"]
+
     dns_records {
       ttl  = 10
       type = "SRV"
     }
+
     dns_records {
       ttl  = 10
       type = "A"
@@ -112,6 +113,10 @@ resource "aws_ecs_service" "app" {
   desired_count   = var.desired_count
   launch_type     = local.launch_type
 
+  deployment_controller {
+    type = "ECS"
+  }
+
   network_configuration {
     security_groups = concat(local.security_groups, [aws_security_group.app[0].id])
 
@@ -122,9 +127,15 @@ resource "aws_ecs_service" "app" {
   }
 
   service_registries {
-    registry_arn = aws_service_discovery_service.app.arn
-    port         = var.port
+    container_port = 0
+    registry_arn   = aws_service_discovery_service.app.arn
+    port           = local.lb_port
   }
 
-  tags = local.tags
+  tags           = local.tags
+  propagate_tags = "SERVICE"
+
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
 }

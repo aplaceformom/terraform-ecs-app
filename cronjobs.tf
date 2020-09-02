@@ -17,7 +17,7 @@ resource "aws_cloudwatch_event_target" "cronjobs" {
 
   ecs_target {
     task_count          = 1
-    task_definition_arn = element(concat(aws_ecs_service.alb_app.*.task_definition, aws_ecs_service.app.*.task_definition, aws_ecs_service.ip_nlb_app.*.task_definition, aws_ecs_service.nlb_app.*.task_definition, [""]), 0)
+    task_definition_arn = element(concat(aws_ecs_service.alb_app.*.task_definition, aws_ecs_service.app.*.task_definition, aws_ecs_service.ip_nlb_app.*.task_definition, aws_ecs_service.nlb_app.*.task_definition, list("")), 0)
 
     launch_type = var.launch_type
     network_configuration {
@@ -29,20 +29,20 @@ resource "aws_cloudwatch_event_target" "cronjobs" {
 {
   "containerOverrides": [
     {
-      "name":    "${var.cronjobs[count.index]["name"]}",
-      "command": "${var.cronjobs[count.index]["command"]}"
+      "name":    "${var.name}",
+      "command": "${lookup(var.cronjobs[count.index], "command")}"
     }
   ]
 }
 EOF
-
 }
 
 # These are defaults from terraform's documentation - they are required for
 # cloudwatch to be able to trigger ecs tasks.
 resource "aws_iam_role" "cronjobs" {
-  count              = length(var.cronjobs) > 0 ? 1 : 0
-  name               = "ecs_schedule_${var.name}"
+  count = length(var.cronjobs) > 0 ? 1 : 0
+  name  = "ecs_schedule_${var.name}"
+
   assume_role_policy = <<DOC
 {
   "Version": "2012-10-17",
@@ -58,13 +58,12 @@ resource "aws_iam_role" "cronjobs" {
   ]
 }
 DOC
-
 }
 
 resource "aws_iam_role_policy" "cronjobs" {
   count = length(var.cronjobs) > 0 ? 1 : 0
   name  = "${var.name}_cronjobs"
-  role  = element(concat(aws_iam_role.cronjobs.*.name, [""]), 0)
+  role  = element(concat(aws_iam_role.cronjobs.*.name, list("")), 0)
 
   # This allows the cloudwatch rule to pass the default execution role to ECS
   # to launch the task with.  The policy does not support the wildcard
@@ -85,15 +84,9 @@ resource "aws_iam_role_policy" "cronjobs" {
       }, {
           "Effect": "Allow",
           "Action": "ecs:RunTask",
-          "Resource": "${replace(
-  element(concat(aws_iam_role.cronjobs.*.arn, [""]), 0),
-  "/:\\d+$/",
-  ":*",
-)}"
+          "Resource": "${replace(element(concat(aws_ecs_service.alb_app.*.task_definition, aws_ecs_service.app.*.task_definition, aws_ecs_service.ip_nlb_app.*.task_definition, aws_ecs_service.nlb_app.*.task_definition, [""]), 0), "/:\\d+$/", ":*")}"
       }
   ]
 }
 DOC
-
 }
-

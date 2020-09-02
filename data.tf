@@ -1,5 +1,6 @@
 /* vim: ts=2:sw=2:sts=0:expandtab */
 data "aws_region" "current" {}
+
 data "aws_caller_identity" "current" {}
 locals {
   tags = merge(var.tags, { environment = terraform.workspace, env = terraform.workspace, name = var.name })
@@ -21,14 +22,6 @@ locals {
     }
   ]
 
-  mount_points = [
-    for key in keys(var.mount_points) : {
-      sourceVolume  = key
-      containerPath = var.mount_points[key]
-      readOnly      = false
-    }
-  ]
-
   template = [{
     name      = var.name
     image     = var.image
@@ -41,7 +34,6 @@ locals {
       containerPort = var.port
       protocol      = "tcp"
     }]
-    mountPoints = local.mount_points
     environment = local.environ
     secrets     = local.secrets
     logConfiguration = {

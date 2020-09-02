@@ -1,4 +1,7 @@
 /* vim: ts=2:sw=2:sts=0:expandtab */
+locals {
+  enable_alb = "${local.lb_protocol != "TCP" && local.lb_protocol != "TLS" && local.enable_lb ? true : false}"
+}
 
 resource "aws_lb" "alb" {
   count              = local.enable_alb ? 1 : 0
@@ -7,10 +10,8 @@ resource "aws_lb" "alb" {
   internal           = var.public ? false : true
   subnets            = split(",", var.public ? join(",", local.public_subnets) : join(",", local.private_subnets))
   idle_timeout       = var.idle_timeout
-
-  security_groups = [aws_security_group.lb2cluster[0].id]
-
-  tags = local.tags
+  security_groups    = [aws_security_group.lb2cluster[0].id]
+  tags               = local.tags
 }
 
 resource "aws_ecs_service" "alb_app" {
@@ -22,6 +23,10 @@ resource "aws_ecs_service" "alb_app" {
   launch_type     = local.launch_type
 
   health_check_grace_period_seconds = var.health_check_grace_period
+
+  deployment_controller {
+    type = "ECS"
+  }
 
   network_configuration {
     security_groups = concat(local.security_groups, [aws_security_group.cluster2app[0].id])
@@ -35,12 +40,18 @@ resource "aws_ecs_service" "alb_app" {
   }
 
   service_registries {
-    registry_arn = aws_service_discovery_service.app.arn
-    port         = var.port
+    container_port = 0
+    registry_arn   = aws_service_discovery_service.app.arn
+    port           = local.lb_port
   }
+
+  tags           = local.tags
+  propagate_tags = "SERVICE"
 
   depends_on = [aws_lb_listener.front_end]
 
-  tags = local.tags
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
 }
 

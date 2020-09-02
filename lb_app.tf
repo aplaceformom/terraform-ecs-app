@@ -1,4 +1,7 @@
 /* vim: ts=2:sw=2:sts=0:expandtab */
+locals {
+  enable_lb = "${local.lb_protocol != "" && var.enable ? true : false}"
+}
 
 # This is the group you need to edit if you want to restrict access to your application
 # Inbound to the ALB's listeners: 80 is allowed by default and redirects to the HTTPS listener on 443. 
@@ -9,8 +12,7 @@ resource "aws_security_group" "lb2cluster" {
   name_prefix = local.prefix
   description = "Controls access to the ALB listeners"
   vpc_id      = local.vpc_id
-
-  tags = local.tags
+  tags        = local.tags
 }
 
 resource "aws_security_group_rule" "allow_service_port" {
@@ -66,8 +68,6 @@ resource "aws_security_group" "cluster2app" {
     to_port     = 0
     cidr_blocks = ["0.0.0.0/0"]
   }
-
-  tags = local.tags
 }
 
 resource "aws_lb_target_group" "lb_app" {
@@ -80,14 +80,21 @@ resource "aws_lb_target_group" "lb_app" {
   deregistration_delay = var.tg_dereg_delay
 
   health_check {
-    path                = var.health_check_path
+    path                = local.tg_protocol == "HTTP" || local.tg_protocol == "HTTPS" ? var.health_check_path : ""
     port                = var.health_check_port
     protocol            = var.health_check_protocol
-    healthy_threshold   = var.health_check_healthy_threshold
-    unhealthy_threshold = var.health_check_unhealthy_threshold
     interval            = var.health_check_interval
-    timeout             = var.health_check_timeout
-    matcher             = var.health_check_success_codes
+    healthy_threshold   = var.health_check_healthy_threshold
+    unhealthy_threshold = local.tg_protocol == "TLS" || local.tg_protocol == "TCP" ? var.health_check_healthy_threshold : var.health_check_unhealthy_threshold
+    matcher             = local.tg_protocol == "HTTP" || local.tg_protocol == "HTTPS" ? var.health_check_success_codes : ""
+
+    ##
+    # For target groups with a protocol of HTTP or HTTPS, the default is 5
+    # seconds. For target groups with a protocol of TCP or TLS, this value must
+    # be 6 seconds for HTTP health checks and 10 seconds for TCP and HTTPS
+    # health checks. If the target type is lambda, the default is 30 seconds.
+    # See: https://docs.aws.amazon.com/elasticloadbalancing/latest/APIReference/API_CreateTargetGroup.html
+    timeout = (local.tg_protocol == "TLS" || local.tg_protocol == "TCP") && var.health_check_protocol == "HTTP" ? 6 : local.tg_protocol == "TCP" && var.health_check_protocol == "HTTPS" ? 10 : var.health_check_timeout
   }
 }
 
@@ -131,4 +138,3 @@ resource "aws_lb_listener" "http" {
     }
   }
 }
-
