@@ -166,11 +166,21 @@ variable "desired_count" {
 }
 
 variable "autoscaling_target_tracking_metric" {
-  default = "ECSServiceAverageCPUUtilization"
+  default = "ECSServiceAverageCPUUtilization (deprecated)"
 }
 
 variable "autoscaling_target_tracking_value" {
   default = 50
+}
+
+variable "autoscaling_target_cpu" {
+  description = "ECSServiceAverageCPUUtilization"
+  default     = 50
+}
+
+variable "autoscaling_target_mem" {
+  description = "ECSServiceAverageMemoryUtilization"
+  default     = 50
 }
 
 variable "autoscaling_min_count" {
