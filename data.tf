@@ -1,7 +1,10 @@
 /* vim: ts=2:sw=2:sts=0:expandtab */
+data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 locals {
   tags = merge(var.tags, { environment = terraform.workspace, env = terraform.workspace, name = var.name })
+
+  region = data.aws_region.current.name
 
   environs = merge(var.environment, { environment = terraform.workspace })
   environ = [
@@ -45,7 +48,7 @@ locals {
       logDriver = "awslogs"
         options = {
           awslogs-create-group = "true"
-          awslogs-region = var.region
+          awslogs-region = local.region
           awslogs-group = var.family
           awslogs-stream-prefix = var.prefix
         }

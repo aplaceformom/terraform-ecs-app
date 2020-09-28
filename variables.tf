@@ -39,7 +39,8 @@ variable "exec_role_arn" {
 }
 
 variable "region" {
-  default = ""
+  description = "Deployment region (deprecated)"
+  default = "unused"
 }
 
 variable "public" {
@@ -256,7 +257,6 @@ variable "elkendpoint" {
 
 locals {
   vpc_id = var.vpc_id == "" ? var.cluster["vpc_id"] : var.vpc_id
-  region = var.region == "" ? var.cluster["region"] : var.region
   family = var.family == "" ? var.name : var.family
   prefix = var.prefix == "" ? local.family : var.prefix
 
