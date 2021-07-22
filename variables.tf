@@ -88,6 +88,10 @@ variable "secrets" {
   default = {}
 }
 
+variable "sidecars" {
+  default = {}
+}
+
 variable "template" {
   default = ""
 }
