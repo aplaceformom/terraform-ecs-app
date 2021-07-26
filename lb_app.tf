@@ -4,7 +4,7 @@ locals {
 }
 
 # This is the group you need to edit if you want to restrict access to your application
-# Inbound to the ALB's listeners: 80 is allowed by default and redirects to the HTTPS listener on 443. 
+# Inbound to the ALB's listeners: 80 is allowed by default and redirects to the HTTPS listener on 443.
 # The "lb_port" defaults to 443 and is allowed from any source, but can be modified.
 # All outbound is allowed.
 resource "aws_security_group" "lb2cluster" {
@@ -17,6 +17,7 @@ resource "aws_security_group" "lb2cluster" {
 
 resource "aws_security_group_rule" "allow_service_port" {
   count       = local.enable_lb ? 1 : 0
+  description = "Allow ingress to ${var.name} on port ${local.lb_port}"
   type        = "ingress"
   protocol    = "tcp"
   from_port   = local.lb_port
@@ -28,6 +29,7 @@ resource "aws_security_group_rule" "allow_service_port" {
 
 resource "aws_security_group_rule" "allow_80" {
   count       = local.lb_port != "80" && local.enable_lb ? 1 : 0
+  description = "Allow HTTP ingress"
   type        = "ingress"
   from_port   = 80
   to_port     = 80
@@ -39,6 +41,7 @@ resource "aws_security_group_rule" "allow_80" {
 
 resource "aws_security_group_rule" "allow_outbound" {
   count       = local.enable_lb ? 1 : 0
+  description = "Allow all outbound traffic"
   type        = "egress"
   from_port   = 0
   to_port     = 0
