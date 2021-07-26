@@ -13,6 +13,7 @@ resource "aws_eip" "ip" {
 
 resource "aws_lb" "ip_nlb" {
   count              = local.enable_ip_nlb ? 1 : 0
+  internal           = ! var.public
   name_prefix        = local.prefix
   load_balancer_type = "network"
   tags               = local.tags

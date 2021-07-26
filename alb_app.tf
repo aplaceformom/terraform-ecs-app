@@ -54,4 +54,3 @@ resource "aws_ecs_service" "alb_app" {
     ignore_changes = [desired_count]
   }
 }
-
