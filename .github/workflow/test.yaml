@@ -1,0 +1,199 @@
+name: Testing
+
+on: [pull_request]
+
+env:
+  TF_VERSION: 0.12.31
+  TFSEC_VERSION: v0.39.42
+  TFDOCS_VERSION: v0.14.1
+  TFLINT_VERSION: 0.29.0
+  TF_VAR_region: us-east-1
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+
+jobs:
+  commit-lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-node@v1
+      with:
+        node-version: '14'
+    - run: npm install
+    - uses: wagoid/commitlint-github-action@v3
+      env:
+        NODE_PATH: ${{ github.workspace }}/node_modules
+
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+    - id: env
+      run: |
+        echo "::set-output name=home::${HOME}"
+        mkdir -p "${HOME}/.local/bin"
+        printf 'provider "aws" { region = var.region }\n' > _aws_provider.tf
+
+    - uses: actions/checkout@v2
+
+    - uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+
+    - uses: actions/cache@v2
+      id: tflint-cache
+      with:
+        path: ${{ steps.env.outputs.home }}/.local/bin/tflint
+        key: tflint-${{ env.TFLINT_VERSION }}
+    - name: Install TFLint
+      if: steps.tflint-cache.outputs.cache-hit != 'true'
+      run: |
+        set -e
+        echo "GH_HOME='${{ env.GITHUB_HOME }}'"
+        echo "HOME='${HOME}'"
+        echo "PATH='${PATH}'"
+        curl -sSLo '/tmp/tflint-install.sh' 'https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh'
+        sudo /bin/bash '/tmp/tflint-install.sh'
+        cp '/usr/local/bin/tflint' '${{ steps.env.outputs.home }}/.local/bin/'
+
+    - uses: actions/cache@v2
+      id: tfdocs-cache
+      with:
+        path: ${{ steps.env.outputs.home }}/.local/bin/terraform-docs
+        key: terraform-docs-${{ env.TFDOCS_VERSION }}
+    - name: Install terraform-docs
+      if: steps.tfdocs-cache.outputs.cache-hit != 'true'
+      run: |
+        set -e
+        mkdir -p /tmp || :
+        curl -sSLo '/tmp/terraform-docs.tar.gz' 'https://terraform-docs.io/dl/v0.14.1/terraform-docs-${{ env.TFDOCS_VERSION }}-Linux-amd64.tar.gz'
+        sudo tar -C '${{ steps.env.outputs.home }}/.local/bin' -xavf '/tmp/terraform-docs.tar.gz' 'terraform-docs'
+
+    - uses: actions/cache@v2
+      id: tfsec-cache
+      with:
+        path: ${{ steps.env.outputs.home }}/.local/bin/tfsec
+        key: tfsec-${{ env.TFSEC_VERSION }}
+    - name: Install TFSec
+      if: steps.tfsec-cache.outputs.cache-hit != 'true'
+      run: |
+        set -e
+        sudo curl -sSLo '${{ steps.env.outputs.home }}/.local/bin/tfsec' 'https://github.com/tfsec/tfsec/releases/download/${{ env.TFSEC_VERSION }}/tfsec-linux-amd64'
+        sudo chmod 0755 '${{ steps.env.outputs.home }}/.local/bin/tfsec'
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Set Pre-commit Cache Key
+      run: echo "PY=$(python --version --version | sha256sum | cut -d' ' -f1)" >> $GITHUB_ENV
+    - uses: actions/cache@v2
+      with:
+        path: ~/.cache/pre-commit
+        key: pre-commit-${{ env.PY }}-${{ hashFiles('.pre-commit-config.yaml') }}
+    - uses: pre-commit/action@v2.0.3
+
+  terraform-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - run: printf 'provider "aws" { region = var.region }\n' > _aws_provider.tf
+
+    - uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+    - uses: actions/cache@v2
+      with:
+        path: .terraform.d
+        key: terraform-${{ env.TF_VERSION }}-${{ hashFiles('versions.tf') }}
+    - id: init
+      run: terraform init -no-color
+
+    - id: format
+      run: terraform fmt -check -no-color
+
+    - id: validate
+      run: terraform validate -no-color
+
+  terraform-apply:
+    needs: [commit-lint, pre-commit, terraform-check]
+    runs-on: ubuntu-latest
+    services:
+      localstack:
+        image: localstack/localstack
+        ports:
+          - 4566:4566
+        env:
+          LOCALSTACK_API_KEY: ${{ secrets.LOCALSTACK_API_KEY }}
+          SERVICES: cloudwatch,ec2,ecs,iam,sts,events
+        volumes:
+          - /tmp/localstack:/tmp/localstack
+    steps:
+    - uses: actions/cache@v2
+      id: localstack-license
+      with:
+        path: /tmp/localstack/.localstack
+        key: localstack-license
+    - name: Waiting for Localstack
+      timeout-minutes: 10
+      run: while ! curl --fail -s -k https://localhost:4566/health; do sleep 5 ; done
+
+    - uses: actions/checkout@v2
+    - name: Configure Terraform for Localstack
+      run: |
+        cat <<EOF>_aws_provider.tf
+        provider "aws" {
+          region                      = var.region
+          access_key                  = "${{ env.AWS_ACCESS_KEY_ID }}"
+          secret_key                  = "${{ env.AWS_SECRET_ACCESS_KEY }}"
+          skip_credentials_validation = true
+          skip_metadata_api_check     = true
+          skip_requesting_account_id  = true
+
+          endpoints {
+            cloudwatch       = "http://localhost:4566"
+            cloudwatchevents = "http://localhost:4566"
+            ec2              = "http://localhost:4566"
+            ecs              = "http://localhost:4566"
+            iam              = "http://localhost:4566"
+            sts              = "http://localhost:4566"
+          }
+        }
+        EOF
+
+    - uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+    - uses: actions/cache@v2
+      with:
+        path: .terraform.d
+        key: terraform-${{ env.TF_VERSION }}-${{ hashFiles('versions.tf') }}
+
+    - id: init
+      run: terraform init
+
+    - name: Terraform Apply
+      id: apply
+      env:
+        TF_LOG: info
+        TF_VAR_image: scratch
+        TF_VAR_name: localstack-test
+        TF_VAR_cloudwatch_log_group: localstack-logs
+        TF_VAR_schedule: '0 7 * * ? *'
+        TF_VAR_command: "echo hello world"
+        TF_VAR_environment: '{ environment = "test" }'
+        TF_VAR_secrets: '{ password = "abc123" }'
+      run: terraform apply -no-color -input=false -auto-approve
+
+    - name: Terraform Apply (enable=false)
+      id: destroy
+      env:
+        TF_LOG: info
+        TF_VAR_image: scratch
+        TF_VAR_name: localstack-test
+        TF_VAR_cloudwatch_log_group: localstack-logs
+        TF_VAR_schedule: '0 7 * * ? *'
+        TF_VAR_enable: false
+      run: terraform apply -no-color -input=false -auto-approve
