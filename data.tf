@@ -22,16 +22,11 @@ locals {
     }
   ]
 
-  sidecars = [
-    for key in sort(keys(var.sidecars)) : {
-      name  = key
-      image = var.sidecars[key]
-    }
-  ]
-
-  primary = [{
+  template = [{
     name      = var.name
     image     = var.image
+    cpu       = var.cpus
+    memory    = var.memory
     command   = var.command
     essential = true
     portMappings = [{
@@ -51,6 +46,4 @@ locals {
       }
     }
   }]
-
-  template = compact(concat(local.primary, local.sidecars))
 }
