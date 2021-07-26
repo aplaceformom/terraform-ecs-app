@@ -52,5 +52,5 @@ locals {
     }
   }]
 
-  template = compact(concat(primary, sidecars))
+  template = compact(concat(lcoal.primary, local.sidecars))
 }
