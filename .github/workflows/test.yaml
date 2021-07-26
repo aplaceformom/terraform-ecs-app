@@ -140,6 +140,10 @@ jobs:
       timeout-minutes: 10
       run: while ! curl --fail -s -k https://localhost:4566/health; do sleep 5 ; done
 
+    - name: Create target infrastructure
+      run: |
+        aws --endpoint-url 'http://localhost:4566' ecs create-cluster --cluster-name default
+
     - uses: actions/checkout@v2
     - name: Configure Terraform for Localstack
       run: |
@@ -180,20 +184,23 @@ jobs:
         TF_LOG: info
         TF_VAR_image: scratch
         TF_VAR_name: localstack-test
-        TF_VAR_cloudwatch_log_group: localstack-logs
-        TF_VAR_schedule: '0 7 * * ? *'
-        TF_VAR_command: "echo hello world"
+        TF_VAR_command: '["echo", "hello world"]'
         TF_VAR_environment: '{ environment = "test" }'
         TF_VAR_secrets: '{ password = "abc123" }'
+        TF_VAR_cluster: '{ id = "default", name = "default" }'
+        TF_VAR_port: 80
       run: terraform apply -no-color -input=false -auto-approve
 
     - name: Terraform Apply (enable=false)
       id: destroy
       env:
+        TF_VAR_enable: false
         TF_LOG: info
         TF_VAR_image: scratch
         TF_VAR_name: localstack-test
-        TF_VAR_cloudwatch_log_group: localstack-logs
-        TF_VAR_schedule: '0 7 * * ? *'
-        TF_VAR_enable: false
+        TF_VAR_command: '["echo", "hello world"]'
+        TF_VAR_environment: '{ environment = "test" }'
+        TF_VAR_secrets: '{ password = "abc123" }'
+        TF_VAR_cluster: '{ id = "default", name = "default" }'
+        TF_VAR_port: 80
       run: terraform apply -no-color -input=false -auto-approve
