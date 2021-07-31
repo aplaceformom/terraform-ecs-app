@@ -73,18 +73,22 @@ variable "launch_type" {
 }
 
 variable "cpus" {
-  default = ""
+  type    = number
+  default = null
 }
 
 variable "memory" {
-  default = ""
+  type    = number
+  default = null
 }
 
 variable "environment" {
+  type    = map(string)
   default = {}
 }
 
 variable "secrets" {
+  type    = map(string)
   default = {}
 }
 
@@ -93,14 +97,18 @@ variable "template" {
 }
 
 variable "port" {
+  type    = number
+  default = null
 }
 
 variable "lb_protocol" {
+  type    = string
   default = ""
 }
 
 variable "lb_port" {
-  default = ""
+  type    = number
+  default = null
 }
 
 variable "certificate" {
@@ -364,11 +372,11 @@ locals {
 
   security_groups = "${concat(split(",", var.cluster["security_groups"]), var.security_group_ids)}"
 
-  port         = var.port == "" ? var.lb_port : var.port
-  lb_port      = var.lb_port == "" ? var.port : var.lb_port
-  lb_protocol  = upper(var.lb_protocol)
-  tg_protocol  = var.tg_protocol == "" ? local.lb_protocol : upper(var.tg_protocol)
-  launch_type  = upper(var.launch_type)
+  port        = var.port == null ? var.lb_port : var.port
+  lb_port     = var.lb_port == null ? var.port : var.lb_port
+  lb_protocol = upper(var.lb_protocol)
+  tg_protocol = var.tg_protocol == "" ? local.lb_protocol : upper(var.tg_protocol)
+  launch_type = upper(var.launch_type)
 
   default_cpus   = local.launch_type == "FARGATE" ? "256" : "1"
   default_memory = local.launch_type == "FARGATE" ? 512 : "512"
@@ -376,5 +384,4 @@ locals {
   memory         = var.memory == "" ? local.default_memory : var.memory
 
   exec_role_arn = var.exec_role_arn == "" ? var.cluster["execution_role_arn"] : var.exec_role_arn
-  elkendpoint   = var.elkendpoint == "" ? var.cluster["elk_endpoint"] : var.elkendpoint
 }
