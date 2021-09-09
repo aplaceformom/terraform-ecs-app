@@ -7,9 +7,10 @@ env:
   TFSEC_VERSION: v0.39.42
   TFDOCS_VERSION: v0.14.1
   TFLINT_VERSION: 0.29.0
-  TF_VAR_region: us-east-1
   AWS_ACCESS_KEY_ID: test
   AWS_SECRET_ACCESS_KEY: test
+  AWS_DEFAULT_REGION: us-east-1
+  LOCALSTACK_SERVICES: cloudwatch,cloudwatchevents,ec2,ecr,ecs,iam,sts
 
 jobs:
   commit-lint:
@@ -33,7 +34,7 @@ jobs:
       run: |
         echo "::set-output name=home::${HOME}"
         mkdir -p "${HOME}/.local/bin"
-        printf 'provider "aws" { region = var.region }\n' > _aws_provider.tf
+        printf 'provider "aws" { region = "${{ env.AWS_DEFAULT_REGION }}" }\n' > _aws_provider.tf
 
     - uses: actions/checkout@v2
 
@@ -99,7 +100,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - run: printf 'provider "aws" { region = var.region }\n' > _aws_provider.tf
+    - run: printf 'provider "aws" { region = "${{ env.AWS_DEFAULT_REGION }}" }\n' > _aws_provider.tf
 
     - uses: hashicorp/setup-terraform@v1
       with:
@@ -124,49 +125,29 @@ jobs:
       localstack:
         image: localstack/localstack
         ports:
+          - 443:443
+          - 4535:4535
           - 4566:4566
         env:
           LOCALSTACK_API_KEY: ${{ secrets.LOCALSTACK_API_KEY }}
-          SERVICES: cloudwatch,ec2,ecs,iam,sts,events
+          SERVICES: ${{ env.LOCALSTACK_SERVICES }}
+          DEFAULT_REGION: ${{ env.AWS_DEFAULT_REGION }}
         volumes:
           - /tmp/localstack:/tmp/localstack
+
     steps:
+    - name: Localstack Setup
+      uses: apfm-actions/localstack-action@v1
+      id: localstack
+      with:
+        services: ${{ env.LOCALSTACK_SERVICES }}
     - uses: actions/cache@v2
       id: localstack-license
       with:
         path: /tmp/localstack/.localstack
         key: localstack-license
-    - name: Waiting for Localstack
-      timeout-minutes: 10
-      run: while ! curl --fail -s -k https://localhost:4566/health; do sleep 5 ; done
-
-    - name: Create target infrastructure
-      run: |
-        aws --endpoint-url 'http://localhost:4566' ecs create-cluster --cluster-name default
 
     - uses: actions/checkout@v2
-    - name: Configure Terraform for Localstack
-      run: |
-        cat <<EOF>_aws_provider.tf
-        provider "aws" {
-          region                      = var.region
-          access_key                  = "${{ env.AWS_ACCESS_KEY_ID }}"
-          secret_key                  = "${{ env.AWS_SECRET_ACCESS_KEY }}"
-          skip_credentials_validation = true
-          skip_metadata_api_check     = true
-          skip_requesting_account_id  = true
-
-          endpoints {
-            cloudwatch       = "http://localhost:4566"
-            cloudwatchevents = "http://localhost:4566"
-            ec2              = "http://localhost:4566"
-            ecs              = "http://localhost:4566"
-            iam              = "http://localhost:4566"
-            sts              = "http://localhost:4566"
-          }
-        }
-        EOF
-
     - uses: hashicorp/setup-terraform@v1
       with:
         terraform_version: ${{ env.TF_VERSION }}
@@ -175,32 +156,68 @@ jobs:
         path: .terraform.d
         key: terraform-${{ env.TF_VERSION }}-${{ hashFiles('versions.tf') }}
 
-    - id: init
-      run: terraform init
+    - name: Configure Terraform for Localstack
+      env:
+        LOCALSTACK_ENDPOINT_URL: ${{ steps.localstack.outputs.endpoint_url }}
+      run: |
+        cat <<EOF>_localstack_provider.tf
+        provider "aws" {
+          region                      = "${AWS_DEFAULT_REGION}"
+          access_key                  = "${AWS_ACCESS_KEY_ID}"
+          secret_key                  = "${AWS_SECRET_ACCESS_KEY}"
+          skip_credentials_validation = true
+          skip_metadata_api_check     = true
+          skip_requesting_account_id  = true
+
+          endpoints {
+        EOF
+        for service in $(echo "${LOCALSTACK_SERVICES}" | tr ',' ' '); do
+            printf '%25s = "%s"\n' "${service}" "${LOCALSTACK_ENDPOINT_URL}" >> _localstack_provider.tf
+        done
+        printf '  }\n}\n' >> _localstack_provider.tf
+        terraform init
 
     - name: Terraform Apply
       id: apply
+      timeout-minutes: 10
       env:
-        TF_LOG: info
-        TF_VAR_image: scratch
-        TF_VAR_name: localstack-test
-        TF_VAR_command: '["echo", "hello world"]'
-        TF_VAR_environment: '{ environment = "test" }'
-        TF_VAR_secrets: '{ password = "abc123" }'
-        TF_VAR_cluster: '{ id = "default", name = "default" }'
-        TF_VAR_port: 80
-      run: terraform apply -no-color -input=false -auto-approve
+        TF_IN_AUTOMATION: true
+        TF_LOG: WARN
+        TF_LOG_CORE: INFO
+        TF_LOG_PROVIDER: DEBUG
+      run: |
+        terraform apply -no-color -input=false -lock=false -auto-approve \
+          -var "region=${AWS_DEFAULT_REGION}" \
+          -var 'image=scratch' \
+          -var 'name=localstack-test' \
+          -var 'command=["echo", "hello world"]' \
+          -var 'environment={ "environment":"test" }' \
+          -var 'secrets={ "password":"abc123" }' \
+          -var 'cluster={ id = "${{ steps.localstack.outputs.cluster_arn }}", name = "${{steps.localstack.outputs.cluster_name }}", security_group_ids = "${{ steps.localstack.outputs.security_group_ids }}", private_subnets = "${{ steps.localstack.outputs.private_subnets }}", public_subnets = "${{ steps.localstack.outputs.public_subnets }}" }' \
+          -var 'port=80' \
+          -var 'enable=true'
 
     - name: Terraform Apply (enable=false)
       id: destroy
+      timeout-minutes: 5
       env:
-        TF_VAR_enable: false
-        TF_LOG: info
-        TF_VAR_image: scratch
-        TF_VAR_name: localstack-test
-        TF_VAR_command: '["echo", "hello world"]'
-        TF_VAR_environment: '{ environment = "test" }'
-        TF_VAR_secrets: '{ password = "abc123" }'
-        TF_VAR_cluster: '{ id = "default", name = "default" }'
-        TF_VAR_port: 80
-      run: terraform apply -no-color -input=false -auto-approve
+        TF_IN_AUTOMATION: true
+        TF_LOG: WARN
+        TF_LOG_CORE: INFO
+        TF_LOG_PROVIDER: DEBUG
+      run: |
+        terraform apply -no-color -input=false -lock=false -auto-approve \
+          -var "region=${AWS_DEFAULT_REGION}" \
+          -var 'image=scratch' \
+          -var 'name=localstack-test' \
+          -var 'command=["echo", "hello world"]' \
+          -var 'environment={ environment = "test" }' \
+          -var 'secrets={ password = "abc123" }' \
+          -var 'cluster={ id = "${{ steps.localstack.outputs.cluster_arn }}", name = "${{steps.localstack.outputs.cluster_name }}", security_group_ids = "${{ steps.localstack.outputs.security_group_ids }}", private_subnets = "${{ steps.localstack.outputs.private_subnets }}", public_subnets = "${{ steps.localstack.outputs.public_subnets }}" }' \
+          -var 'port=80' \
+          -var 'enable=false'
+
+    - name: Localstack Logs
+      if: always()
+      run: |
+        docker logs "$( docker ps -q -a --no-trunc --format 'table {{.ID}} {{.Image}}' | awk '/localstack/{print$1}')"
