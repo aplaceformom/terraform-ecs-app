@@ -93,6 +93,7 @@ variable "template" {
 }
 
 variable "container_definitions" {
+  type    = string
   default = ""
 }
 

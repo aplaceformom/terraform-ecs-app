@@ -84,7 +84,7 @@ resource "aws_ecs_task_definition" "fargate" {
   memory                   = local.memory
   execution_role_arn       = local.exec_role_arn
   task_role_arn            = var.task_role_arn
-  container_definitions    = tostring(jsonencode(local.template))
+  container_definitions    = local.container_definitions
 }
 
 resource "aws_service_discovery_service" "app" {
