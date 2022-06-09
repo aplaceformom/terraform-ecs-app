@@ -1,6 +1,13 @@
 /* vim: ts=2:sw=2:sts=0:expandtab */
 locals {
   enable_app = "${local.lb_protocol == "" && var.enable ? true : false}"
+
+  ##
+  # if var.container_definitions != "" then:
+  #  local.container_definitions = var.container_definitions
+  # else:
+  #  local.container_definitions = tostring(jsonencode(local.template))
+  container_definitions = var.container_definitions != "" ? var.container_definitions : tostring(jsonencode(local.template))
 }
 
 # This is the group you need to edit if you want to restrict access to your application
@@ -35,7 +42,7 @@ resource "aws_ecs_task_definition" "ec2" {
   memory                   = local.memory
   execution_role_arn       = local.exec_role_arn
   task_role_arn            = var.task_role_arn
-  container_definitions    = tostring(jsonencode(local.template))
+  container_definitions    = local.container_definitions
 
   volume {
     name = "${var.name}-data"
