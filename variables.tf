@@ -297,11 +297,6 @@ variable "alarm_5xx_error_period" {
   default     = 300
 }
 
-variable "enable_service_level_monitoring" {
-  description = "Enables service level monitoring on the load balancer"
-  default     = false
-}
-
 variable "service_level_settings" {
   description = "Map of default settings for service level monitoring. If you want to specify custom values, copy this map and pass it to the module with your custom settings."
   type        = map(string)
