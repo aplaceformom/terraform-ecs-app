@@ -1,12 +1,10 @@
 resource "aws_ssm_parameter" "loadbalancer" {
-  count = local.enable_lb && var.enable && var.enable_service_level_monitoring ? 1 : 0
   name  = "/${terraform.workspace}/scry/${var.name}/lb"
   type  = "String"
   value = local.alarm_lb
 }
 
 resource "aws_ssm_parameter" "targetgroup" {
-  count = local.enable_lb && var.enable && var.enable_service_level_monitoring ? 1 : 0
   name  = "/${terraform.workspace}/scry/${var.name}/tg"
   type  = "String"
   value = local.alarm_tg
