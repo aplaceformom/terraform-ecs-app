@@ -297,6 +297,31 @@ variable "alarm_5xx_error_period" {
   default     = 300
 }
 
+variable "enable_service_level_monitoring" {
+  description = "Enables service level monitoring on the load balancer"
+  default     = false
+}
+
+variable "service_level_settings" {
+  description = "Map of default settings for service level monitoring. If you want to specify custom values, copy this map and pass it to the module with your custom settings."
+  type        = map(string)
+
+  default = {
+    "sli1_eval_periods" = 2
+    "sli1_threshold"    = 60
+    "sli2_eval_periods" = 5
+    "sli2_threshold"    = 1
+    "sli3_eval_periods" = 5
+    "sli3_threshold"    = 0.1
+    "sli4_eval_periods" = 5
+    "sli4_threshold"    = 30
+    "sli6_eval_periods" = 15
+    "sli6_threshold"    = 90
+    "sli7_eval_periods" = 15
+    "sli7_threshold"    = 90
+  }
+}
+
 variable "enable_cloudwatch_default_alarms" {
   description = "Enables all the alarm resouces in cloudwatch.tf (deprecated)"
   default     = false
