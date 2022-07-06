@@ -303,7 +303,7 @@ variable "service_level_settings" {
 
   default = {
     "sli1_eval_periods" = 2
-    "sli1_threshold"    = 60
+    "sli1_threshold"    = 1
     "sli2_eval_periods" = 5
     "sli2_threshold"    = 1
     "sli3_eval_periods" = 5
