@@ -302,18 +302,18 @@ variable "service_level_settings" {
   type        = map(string)
 
   default = {
-    "sli1_eval_periods" = 2
-    "sli1_threshold"    = 1
-    "sli2_eval_periods" = 5
-    "sli2_threshold"    = 1
-    "sli3_eval_periods" = 5
-    "sli3_threshold"    = 0.1
-    "sli4_eval_periods" = 5
-    "sli4_threshold"    = 30
-    "sli6_eval_periods" = 15
-    "sli6_threshold"    = 90
-    "sli7_eval_periods" = 15
-    "sli7_threshold"    = 90
+    "slo1_eval_periods" = 2
+    "slo1_threshold"    = 1
+    "slo2_eval_periods" = 5
+    "slo2_threshold"    = 1
+    "slo3_eval_periods" = 5
+    "slo3_threshold"    = 0.1
+    "slo4_eval_periods" = 5
+    "slo4_threshold"    = 30
+    "slo6_eval_periods" = 15
+    "slo6_threshold"    = 90
+    "slo7_eval_periods" = 15
+    "slo7_threshold"    = 90
   }
 }
 
