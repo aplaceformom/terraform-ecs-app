@@ -81,6 +81,7 @@ resource "aws_lb_target_group" "lb_app" {
   vpc_id               = local.vpc_id
   target_type          = "ip"
   deregistration_delay = var.tg_dereg_delay
+  tags                 = local.tags
 
   health_check {
     path                = local.tg_protocol == "HTTP" || local.tg_protocol == "HTTPS" ? var.health_check_path : ""
