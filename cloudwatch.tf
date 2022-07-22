@@ -24,7 +24,7 @@ resource "aws_cloudwatch_metric_alarm" "deployment" {
   namespace           = "ECS/ContainerInsights"
   metric_name         = "DeploymentCount"
   comparison_operator = "GreaterThanThreshold"
-  statistic           = "Average"
+  statistic           = "Maximum"
   threshold           = 1
   period              = 60
 
@@ -42,15 +42,15 @@ resource "aws_cloudwatch_metric_alarm" "pending" {
   alarm_description  = "Pending deployment in ${terraform.workspace}"
   alarm_actions      = [aws_sns_topic.alarms[0].arn]
   ok_actions         = [aws_sns_topic.alarms[0].arn]
-  evaluation_periods = 2
+  evaluation_periods = 3
   treat_missing_data = "notBreaching"
 
   namespace           = "ECS/ContainerInsights"
   metric_name         = "DeploymentCount"
   comparison_operator = "GreaterThanThreshold"
-  statistic           = "Average"
+  statistic           = "Maximum"
   threshold           = 1
-  period              = 900
+  period              = 300
 
   dimensions = {
     ClusterName = "${var.cluster["name"]}"
@@ -72,7 +72,7 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_tasks" {
   namespace           = local.enable_nlb ? "AWS/NetworkELB" : local.enable_lb ? "AWS/ApplicationELB" : ""
   metric_name         = "UnHealthyHostCount"
   comparison_operator = "GreaterThanThreshold"
-  statistic           = "Average"
+  statistic           = "Maximum"
   threshold           = var.alarm_unhealthy_task_count
   period              = var.alarm_unhealthy_task_period
 
@@ -84,23 +84,53 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_tasks" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "errors_5xx" {
-  count              = var.enable_alarms && local.enable_alb && var.enable ? 1 : 0
-  alarm_name         = "${var.name}_5xx_errors"
-  alarm_description  = "5xx error rate in ${terraform.workspace}"
-  alarm_actions      = [aws_sns_topic.alarms[0].arn]
-  ok_actions         = [aws_sns_topic.alarms[0].arn]
-  evaluation_periods = 2
-  treat_missing_data = "notBreaching"
-
-  namespace           = "AWS/ApplicationELB"
-  metric_name         = "HTTPCode_ELB_5XX_Count"
+  count               = var.enable_alarms && local.enable_alb && var.enable ? 1 : 0
+  alarm_name          = "${var.name}_5xx_errors"
+  alarm_description   = "5xx error rate in ${terraform.workspace}"
+  alarm_actions       = [aws_sns_topic.alarms[0].arn]
+  ok_actions          = [aws_sns_topic.alarms[0].arn]
+  evaluation_periods  = 2
+  treat_missing_data  = "notBreaching"
   comparison_operator = "GreaterThanThreshold"
-  extended_statistic  = "p100"
   threshold           = var.alarm_5xx_error_percent
-  period              = var.alarm_5xx_error_period
 
-  dimensions = {
-    LoadBalancer = local.alarm_lb
+  metric_query {
+    id          = "e1"
+    expression  = "100*(m1/m2)"
+    label       = "Error Rate"
+    return_data = "true"
+  }
+
+  metric_query {
+    id = "m1"
+
+    metric {
+      metric_name = "HTTPCode_ELB_5XX_Count"
+      namespace   = "AWS/ApplicationELB"
+      period      = var.alarm_5xx_error_period
+      stat        = "Sum"
+      unit        = "Count"
+
+      dimensions = {
+        LoadBalancer = local.alarm_lb
+      }
+    }
+  }
+
+  metric_query {
+    id ="m2"
+
+    metric {
+      metric_name = "RequestCount"
+      namespace   = "AWS/ApplicationELB"
+      period      = var.alarm_5xx_error_period
+      stat        = "Sum"
+      unit        = "Count"
+
+      dimensions = {
+        LoadBalancer = local.alarm_lb
+      }
+    }
   }
 
   tags = local.tags
