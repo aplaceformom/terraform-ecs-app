@@ -302,17 +302,11 @@ variable "service_level_settings" {
   type        = map(string)
 
   default = {
-    "slo1_eval_periods" = 2
-    "slo1_threshold"    = 1
-    "slo2_eval_periods" = 5
-    "slo2_threshold"    = 1
-    "slo3_eval_periods" = 5
-    "slo3_threshold"    = 0.1
-    "slo4_eval_periods" = 5
-    "slo4_threshold"    = 30
-    "slo6_eval_periods" = 15
+    "slo1_threshold"    = 90
+    "slo2_threshold"    = 90
+    "slo3_threshold"    = 10
+    "slo4_threshold"    = 90
     "slo6_threshold"    = 90
-    "slo7_eval_periods" = 15
     "slo7_threshold"    = 90
   }
 }
