@@ -289,7 +289,7 @@ variable "alarm_unhealthy_task_period" {
 
 variable "alarm_5xx_error_percent" {
   description = "5xx error percentile alarm"
-  default     = 1
+  default     = 20
 }
 
 variable "alarm_5xx_error_period" {
@@ -306,8 +306,8 @@ variable "service_level_settings" {
     "slo2_threshold"    = 90
     "slo3_threshold"    = 10
     "slo4_threshold"    = 90
+    "slo5_threshold"    = 90
     "slo6_threshold"    = 90
-    "slo7_threshold"    = 90
   }
 }
 
