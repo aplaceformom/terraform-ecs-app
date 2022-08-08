@@ -14,12 +14,13 @@ resource "aws_sns_topic" "info" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "deployment" {
-  count              = var.enable_notifications && var.enable ? 1 : 0
-  alarm_name         = "${var.name}_deployment"
-  alarm_description  = "Deployment in ${terraform.workspace}"
-  alarm_actions      = [aws_sns_topic.info[0].arn]
-  ok_actions         = [aws_sns_topic.info[0].arn]
-  evaluation_periods = 2
+  count               = var.enable_notifications && var.enable ? 1 : 0
+  alarm_name          = "${var.name}_deployment"
+  alarm_description   = "Deployment in ${terraform.workspace}"
+  alarm_actions       = [aws_sns_topic.info[0].arn]
+  ok_actions          = [aws_sns_topic.info[0].arn]
+  datapoints_to_alarm = 15
+  evaluation_periods  = 15
 
   namespace           = "ECS/ContainerInsights"
   metric_name         = "DeploymentCount"
@@ -37,20 +38,21 @@ resource "aws_cloudwatch_metric_alarm" "deployment" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "pending" {
-  count              = var.enable_alarms && var.enable ? 1 : 0
-  alarm_name         = "${var.name}_pending"
-  alarm_description  = "Pending deployment in ${terraform.workspace}"
-  alarm_actions      = [aws_sns_topic.alarms[0].arn]
-  ok_actions         = [aws_sns_topic.alarms[0].arn]
-  evaluation_periods = 3
-  treat_missing_data = "notBreaching"
+  count               = var.enable_alarms && var.enable ? 1 : 0
+  alarm_name          = "${var.name}_pending"
+  alarm_description   = "Pending deployment in ${terraform.workspace}"
+  alarm_actions       = [aws_sns_topic.alarms[0].arn]
+  ok_actions          = [aws_sns_topic.alarms[0].arn]
+  datapoints_to_alarm = 9
+  evaluation_periods  = 9
+  treat_missing_data  = "notBreaching"
 
   namespace           = "ECS/ContainerInsights"
   metric_name         = "DeploymentCount"
   comparison_operator = "GreaterThanThreshold"
   statistic           = "Maximum"
   threshold           = 1
-  period              = 300
+  period              = 60
 
   dimensions = {
     ClusterName = "${var.cluster["name"]}"
@@ -89,7 +91,8 @@ resource "aws_cloudwatch_metric_alarm" "errors_5xx" {
   alarm_description   = "5xx error rate in ${terraform.workspace}"
   alarm_actions       = [aws_sns_topic.alarms[0].arn]
   ok_actions          = [aws_sns_topic.alarms[0].arn]
-  evaluation_periods  = 2
+  datapoints_to_alarm = 3
+  evaluation_periods  = 3
   treat_missing_data  = "notBreaching"
   comparison_operator = "GreaterThanThreshold"
   threshold           = var.alarm_5xx_error_percent
