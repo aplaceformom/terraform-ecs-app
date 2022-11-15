@@ -7,7 +7,7 @@ locals {
   #  local.container_definitions = var.container_definitions
   # else:
   #  local.container_definitions = tostring(jsonencode(local.template))
-  container_definitions = var.container_definitions != "" ? var.container_definitions : tostring(jsonencode(local.template))
+  container_definitions = var.container_definitions != "" ? var.container_definitions : tostring(jsonencode(concat(local.template, var.xray ? local.xray : [] )))
 }
 
 # This is the group you need to edit if you want to restrict access to your application

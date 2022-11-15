@@ -22,6 +22,20 @@ locals {
     }
   ]
 
+  xray = [{
+      name         = "xray-daemon"
+      image        = "amazon/aws-xray-daemon"
+      cpu          = 32
+      memory       = 256
+      portMappings = [
+          {
+              hostPort      = 0
+              containerPort = 2000
+              protocol      = "udp"
+          }
+       ]
+  }]
+
   template = [{
     name      = var.name
     image     = var.image
