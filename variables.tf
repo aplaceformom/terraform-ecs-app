@@ -307,12 +307,12 @@ variable "service_level_settings" {
   type        = map(string)
 
   default = {
-    "slo1_threshold"    = 90
-    "slo2_threshold"    = 90
-    "slo3_threshold"    = 10
-    "slo4_threshold"    = 90
-    "slo5_threshold"    = 90
-    "slo6_threshold"    = 90
+    "slo1_threshold" = 90
+    "slo2_threshold" = 90
+    "slo3_threshold" = 10
+    "slo4_threshold" = 90
+    "slo5_threshold" = 90
+    "slo6_threshold" = 90
   }
 }
 

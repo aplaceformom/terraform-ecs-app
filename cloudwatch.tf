@@ -121,7 +121,7 @@ resource "aws_cloudwatch_metric_alarm" "errors_5xx" {
   }
 
   metric_query {
-    id ="m2"
+    id = "m2"
 
     metric {
       metric_name = "RequestCount"
