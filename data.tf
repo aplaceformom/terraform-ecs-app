@@ -37,8 +37,6 @@ locals {
   template = [{
     name      = var.name
     image     = var.image
-    cpu       = var.cpus
-    memory    = var.memory
     command   = var.command
     essential = true
     portMappings = [{
