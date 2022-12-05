@@ -23,11 +23,10 @@ locals {
   ]
 
   xray = [{
-    name   = "xray-daemon"
-    image  = "amazon/aws-xray-daemon"
+    name  = "xray-daemon"
+    image = "amazon/aws-xray-daemon"
     portMappings = [
       {
-        hostPort      = 2000
         containerPort = 2000
         protocol      = "udp"
       }
