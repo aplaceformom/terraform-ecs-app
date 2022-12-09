@@ -1,4 +1,5 @@
 resource "aws_ssm_parameter" "loadbalancer" {
+  count     = local.enable_lb ? 1 : 0
   name      = "/scry/${var.name}/lb"
   type      = "String"
   value     = local.alarm_lb
@@ -6,6 +7,7 @@ resource "aws_ssm_parameter" "loadbalancer" {
 }
 
 resource "aws_ssm_parameter" "targetgroup" {
+  count     = local.enable_lb ? 1 : 0
   name      = "/scry/${var.name}/tg"
   type      = "String"
   value     = local.alarm_tg
