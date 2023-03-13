@@ -1,6 +1,6 @@
 /* vim: ts=2:sw=2:sts=0:expandtab */
 locals {
-  enable_nlb = "${(local.lb_protocol == "TCP" || local.lb_protocol == "TLS") && ! var.public && var.enable ? true : false}"
+  enable_nlb = (local.lb_protocol == "TCP" || local.lb_protocol == "TLS") && ! var.public && var.enable ? true : false
 }
 
 resource "aws_lb" "nlb" {

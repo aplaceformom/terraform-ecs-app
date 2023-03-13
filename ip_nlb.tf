@@ -1,6 +1,6 @@
 /* vim: ts=2:sw=2:sts=0:expandtab */
 locals {
-  enable_ip_nlb = "${local.lb_protocol == "TCP" && var.public && var.enable ? true : false}"
+  enable_ip_nlb = local.lb_protocol == "TCP" && var.public && var.enable ? true : false
 }
 
 resource "aws_eip" "ip" {

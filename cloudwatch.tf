@@ -55,8 +55,8 @@ resource "aws_cloudwatch_metric_alarm" "pending" {
   period              = 60
 
   dimensions = {
-    ClusterName = "${var.cluster["name"]}"
-    ServiceName = "${var.name}"
+    ClusterName = var.cluster["name"]
+    ServiceName = var.name
   }
 
   tags = local.tags

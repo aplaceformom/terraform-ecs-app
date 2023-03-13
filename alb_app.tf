@@ -1,6 +1,6 @@
 /* vim: ts=2:sw=2:sts=0:expandtab */
 locals {
-  enable_alb = "${local.lb_protocol != "TCP" && local.lb_protocol != "TLS" && local.enable_lb ? true : false}"
+  enable_alb = local.lb_protocol != "TCP" && local.lb_protocol != "TLS" && local.enable_lb ? true : false
 }
 
 resource "aws_lb" "alb" {

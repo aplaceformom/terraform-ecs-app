@@ -1,6 +1,6 @@
 /* vim: ts=2:sw=2:sts=0:expandtab */
 locals {
-  enable_app = "${local.lb_protocol == "" && var.enable ? true : false}"
+  enable_app = local.lb_protocol == "" && var.enable ? true : false
 
   ##
   # if var.container_definitions != "" then:

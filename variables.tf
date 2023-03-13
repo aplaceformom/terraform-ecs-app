@@ -379,14 +379,14 @@ variable "elkendpoint" {
 }
 
 locals {
-  vpc_id = "${var.vpc_id == "" ? var.cluster["vpc_id"] : var.vpc_id}"
-  family = "${var.family == "" ? var.name : var.family}"
-  prefix = "${var.prefix == "" ? local.family : var.prefix}"
+  vpc_id = var.vpc_id == "" ? var.cluster["vpc_id"] : var.vpc_id
+  family = var.family == "" ? var.name : var.family
+  prefix = var.prefix == "" ? local.family : var.prefix
 
-  public_subnets  = "${split(",", length(var.public_subnets) == 0 ? var.cluster["public_subnets"] : join(",", var.public_subnets))}"
-  private_subnets = "${split(",", length(var.private_subnets) == 0 ? var.cluster["private_subnets"] : join(",", var.private_subnets))}"
+  public_subnets  = split(",", length(var.public_subnets) == 0 ? var.cluster["public_subnets"] : join(",", var.public_subnets))
+  private_subnets = split(",", length(var.private_subnets) == 0 ? var.cluster["private_subnets"] : join(",", var.private_subnets))
 
-  security_groups = "${concat(split(",", var.cluster["security_groups"]), var.security_group_ids)}"
+  security_groups = concat(split(",", var.cluster["security_groups"]), var.security_group_ids)
 
   port        = var.port == "" ? var.lb_port : var.port
   lb_port     = var.lb_port == "" ? var.port : var.lb_port

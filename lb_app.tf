@@ -1,6 +1,6 @@
 /* vim: ts=2:sw=2:sts=0:expandtab */
 locals {
-  enable_lb = "${local.lb_protocol != "" && var.enable ? true : false}"
+  enable_lb = local.lb_protocol != "" && var.enable ? true : false
 }
 
 # This is the group you need to edit if you want to restrict access to your application
