@@ -17,7 +17,7 @@ resource "aws_cloudwatch_event_target" "cronjobs" {
 
   ecs_target {
     task_count          = 1
-    task_definition_arn = element(concat(aws_ecs_service.alb_app.*.task_definition, aws_ecs_service.app.*.task_definition, aws_ecs_service.ip_nlb_app.*.task_definition, aws_ecs_service.nlb_app.*.task_definition, list("")), 0)
+    task_definition_arn = element(concat(aws_ecs_service.alb_app.*.task_definition, aws_ecs_service.app.*.task_definition, aws_ecs_service.ip_nlb_app.*.task_definition, aws_ecs_service.nlb_app.*.task_definition, tolist([""])), 0)
 
     launch_type = var.launch_type
     network_configuration {
@@ -63,7 +63,7 @@ DOC
 resource "aws_iam_role_policy" "cronjobs" {
   count = length(var.cronjobs) > 0 ? 1 : 0
   name  = "${var.name}_cronjobs"
-  role  = element(concat(aws_iam_role.cronjobs.*.name, list("")), 0)
+  role  = element(concat(aws_iam_role.cronjobs.*.name, tolist([""])), 0)
 
   # This allows the cloudwatch rule to pass the default execution role to ECS
   # to launch the task with.  The policy does not support the wildcard
