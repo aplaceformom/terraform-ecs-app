@@ -294,7 +294,7 @@ variable "alarm_unhealthy_task_period" {
 
 variable "alarm_5xx_error_percent" {
   description = "5xx error percentile alarm"
-  default     = 20
+  default     = 30
 }
 
 variable "alarm_5xx_error_period" {
